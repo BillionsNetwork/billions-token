@@ -9,11 +9,7 @@
         "coverage": "hardhat coverage",
         "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
         "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
-        "deploy:mainnet": "hardhat run scripts/deploy.ts --network mainnet",
-        "upgrade:sepolia": "hardhat run scripts/upgrade.ts --network sepolia",
-        "upgrade:mainnet": "hardhat run scripts/upgrade.ts --network mainnet",
-        "verify:sepolia": "hardhat verify --network sepolia",
-        "verify:mainnet": "hardhat verify --network mainnet"
+        "deploy:mainnet": "hardhat run scripts/deploy.ts --network mainnet"
     },
     "engines": {
         "node": ">=18.0.0"
