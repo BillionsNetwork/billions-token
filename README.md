@@ -14,11 +14,11 @@ Upgradeable ERC20 token with ERC20Permit for gasless approvals.
 ```bash
 npm install
 cp .env.example .env  # Add your keys
-npm run compile
-npm test
 ```
 
 ## Deploy
+
+Fulfill `INITIAL_OWNER` in `scripts/deploy.ts` before deploying.
 
 ```bash
 npm run deploy:sepolia
