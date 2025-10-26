@@ -102,6 +102,19 @@ async function main() {
     console.log('  TimelockController:', timelockAddress);
     console.log('  Min Delay:', MIN_DELAY / (24 * 60 * 60), 'days');
 
+    console.log('\nTo verify on Etherscan:');
+    console.log(`npx hardhat verify --network ${process.env.HARDHAT_NETWORK} ${tokenAddress}`);
+
+    console.log('👉 Copy the following constructor arguments into: scripts/timelock-verify-args.js\n', [
+        MIN_DELAY.toString(),
+        proposers,
+        executors,
+        admin,
+    ]);
+    console.log(
+        `npx hardhat verify --constructor-args scripts/timelock-verify-args.js ${timelockAddress} --network ${process.env.HARDHAT_NETWORK}\n`
+    );
+
     console.log('\n📝 Save these addresses:');
     console.log('----------------------------------');
     console.log('TOKEN_PROXY=', tokenAddress);
@@ -109,14 +122,6 @@ async function main() {
     console.log('PROXY_ADMIN=', adminAddress);
     console.log('IMPLEMENTATION=', implementationAddress);
     console.log('----------------------------------');
-
-    console.log('\nTo verify on Etherscan:');
-    console.log(`npx hardhat verify --network ${process.env.HARDHAT_NETWORK} ${tokenAddress}`);
-    console.log(
-        `npx hardhat verify --network ${process.env.HARDHAT_NETWORK} ${timelockAddress} ${MIN_DELAY} '${JSON.stringify(
-            proposers
-        )}' '${JSON.stringify(executors)}' ${admin}`
-    );
 }
 
 main()
