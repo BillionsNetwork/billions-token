@@ -1,0 +1,31 @@
+{
+    "name": "billions-token-deployment",
+    "description": "Token deployment for Billions Network",
+    "version": "1.0.0",
+    "license": "MIT",
+    "scripts": {
+        "compile": "hardhat compile",
+        "test": "hardhat test",
+        "coverage": "hardhat coverage",
+        "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
+        "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+        "deploy:mainnet": "hardhat run scripts/deploy.ts --network mainnet",
+        "upgrade:sepolia": "hardhat run scripts/upgrade.ts --network sepolia",
+        "upgrade:mainnet": "hardhat run scripts/upgrade.ts --network mainnet",
+        "verify:sepolia": "hardhat verify --network sepolia",
+        "verify:mainnet": "hardhat verify --network mainnet"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    },
+    "dependencies": {
+        "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+        "@openzeppelin/contracts-upgradeable": "^5.4.0",
+        "@openzeppelin/hardhat-upgrades": "^3.9.1",
+        "@types/node": "^22.10.2",
+        "dotenv": "^16.4.7",
+        "hardhat": "^2.22.18",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.7.2"
+    }
+}
