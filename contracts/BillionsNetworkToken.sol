@@ -4,10 +4,10 @@ pragma solidity ^0.8.30;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20PermitUpgradeable.sol";
 
 /**
- * @title BillionsToken
+ * @title Billions Network Token
  * @dev Upgradeable ERC20 token with Permit using Transparent Proxy pattern
  */
-contract BillionsToken is ERC20PermitUpgradeable {
+contract BillionsNetworkToken is ERC20PermitUpgradeable {
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();

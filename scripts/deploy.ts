@@ -10,7 +10,7 @@ async function main() {
     const TOKEN_NAME = 'Billions Network Token';
     const TOKEN_SYMBOL = 'BILL';
     const DECIMALS = 18; // Default decimals (not configurable in ERC20)
-    const INITIAL_OWNER = deployer.address; // Initial owner
+    const INITIAL_OWNER = ''; // Initial owner
     const TOTAL_SUPPLY = ethers.parseUnits('10000000000', DECIMALS); // 10 billion tokens
 
     console.log('\n--- Token Configuration ---');
@@ -21,13 +21,17 @@ async function main() {
     console.log('Total Supply:', ethers.formatUnits(TOTAL_SUPPLY, DECIMALS), TOKEN_SYMBOL);
 
     // Deploy upgradeable token using Transparent Proxy
-    const BillionsToken = await ethers.getContractFactory('BillionsToken');
+    const BillionsNetworkToken = await ethers.getContractFactory('BillionsNetworkToken');
     console.log('\nDeploying with Transparent Proxy...');
 
-    const token = await upgrades.deployProxy(BillionsToken, [TOKEN_NAME, TOKEN_SYMBOL, INITIAL_OWNER, TOTAL_SUPPLY], {
-        initializer: 'initialize',
-        kind: 'transparent', // Use Transparent Proxy pattern
-    });
+    const token = await upgrades.deployProxy(
+        BillionsNetworkToken,
+        [TOKEN_NAME, TOKEN_SYMBOL, INITIAL_OWNER, TOTAL_SUPPLY],
+        {
+            initializer: 'initialize',
+            kind: 'transparent', // Use Transparent Proxy pattern
+        }
+    );
 
     await token.waitForDeployment();
 
@@ -49,14 +53,8 @@ async function main() {
     console.log('Implementation:', implementationAddress);
     console.log('ProxyAdmin:', adminAddress);
 
-    console.log('\n--- Features ---');
-    console.log('✅ ERC20 Standard');
-    console.log('✅ ERC20Permit (Gasless Approvals)');
-    console.log('✅ Upgradeable (Transparent Proxy)');
-
-    console.log('\n💡 Important: Save these addresses for future upgrades and verification!');
     console.log('\nTo verify on Etherscan:');
-    console.log(`npx hardhat verify --network <network> ${tokenAddress}`);
+    console.log(`npx hardhat verify --network ${process.env.HARDHAT_NETWORK} ${tokenAddress}`);
 }
 
 main()

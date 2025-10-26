@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
-import { BillionsToken } from '../typechain-types';
+import { BillionsNetworkToken } from '../typechain-types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 
 describe('Billions Network Token (BILL)', function () {
-    let token: BillionsToken;
+    let token: BillionsNetworkToken;
     let owner: SignerWithAddress;
     let user1: SignerWithAddress;
     let user2: SignerWithAddress;
@@ -18,11 +18,15 @@ describe('Billions Network Token (BILL)', function () {
         [owner, user1, user2] = await ethers.getSigners();
 
         // Deploy upgradeable token with Transparent Proxy
-        const BillionsToken = await ethers.getContractFactory('BillionsToken');
-        token = (await upgrades.deployProxy(BillionsToken, [TOKEN_NAME, TOKEN_SYMBOL, owner.address, TOTAL_SUPPLY], {
-            initializer: 'initialize',
-            kind: 'transparent',
-        })) as unknown as BillionsToken;
+        const BillionsNetworkToken = await ethers.getContractFactory('BillionsNetworkToken');
+        token = (await upgrades.deployProxy(
+            BillionsNetworkToken,
+            [TOKEN_NAME, TOKEN_SYMBOL, owner.address, TOTAL_SUPPLY],
+            {
+                initializer: 'initialize',
+                kind: 'transparent',
+            }
+        )) as unknown as BillionsNetworkToken;
         await token.waitForDeployment();
     });
 
@@ -225,8 +229,8 @@ describe('Billions Network Token (BILL)', function () {
             await token.transfer(user1.address, transferAmount);
 
             // Upgrade
-            const BillionsTokenV2 = await ethers.getContractFactory('BillionsToken');
-            const upgraded = await upgrades.upgradeProxy(proxyAddress, BillionsTokenV2);
+            const BillionsNetworkTokenV2 = await ethers.getContractFactory('BillionsNetworkToken');
+            const upgraded = await upgrades.upgradeProxy(proxyAddress, BillionsNetworkTokenV2);
 
             // Verify proxy address unchanged
             expect(await upgraded.getAddress()).to.equal(proxyAddress);

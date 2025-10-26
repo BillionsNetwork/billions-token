@@ -12,14 +12,14 @@ async function main() {
         process.exit(1);
     }
 
-    console.log('Upgrading BillionsToken at:', PROXY_ADDRESS);
+    console.log('Upgrading BillionsNetworkToken at:', PROXY_ADDRESS);
     console.log('Upgrader account:', deployer.address);
 
     // Deploy new implementation
-    const BillionsTokenV2 = await ethers.getContractFactory('BillionsToken');
+    const BillionsNetworkTokenV2 = await ethers.getContractFactory('BillionsNetworkToken');
     console.log('Upgrading to new implementation...');
 
-    const upgraded = await upgrades.upgradeProxy(PROXY_ADDRESS, BillionsTokenV2);
+    const upgraded = await upgrades.upgradeProxy(PROXY_ADDRESS, BillionsNetworkTokenV2);
     await upgraded.waitForDeployment();
 
     console.log('✅ Upgrade complete!');
