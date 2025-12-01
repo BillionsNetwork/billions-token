@@ -87,16 +87,12 @@ async function main() {
     // We use TransparentUpgradeableProxy
     // Constructor: constructor(address _logic, address initialOwner, bytes memory _data)
     const ProxyArtifact = await ethers.getContractFactory('TransparentUpgradeableProxy');
-    const proxyBytecode = (await ProxyArtifact.getDeployTransaction()).data;
-    const abiCoder = new ethers.AbiCoder();
-    const encodedArgs = abiCoder.encode(
-        ['address', 'address', 'bytes'],
-        [implResult.address, timelockResult.address, initData]
-    );
-    const proxyCreationCode = ethers.concat([proxyBytecode, encodedArgs]);
+    const proxyCreationCode = (
+        await ProxyArtifact.getDeployTransaction(implResult.address, timelockResult.address, initData)
+    ).data;
     const proxyInitCodeHash = ethers.keccak256(proxyCreationCode);
 
-    const proxyResult = mineSalt(proxyInitCodeHash, FACTORY_ADDRESS, '0xb111', '');
+    const proxyResult = mineSalt(proxyInitCodeHash, FACTORY_ADDRESS, '0xb1110', '');
     console.log(`Found Proxy Salt: ${proxyResult.salt}`);
     console.log(`Proxy Address: ${proxyResult.address}`);
 

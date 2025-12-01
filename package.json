@@ -7,9 +7,12 @@
         "compile": "hardhat compile",
         "test": "hardhat test",
         "coverage": "hardhat coverage",
-        "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
-        "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
-        "deploy:mainnet": "hardhat run scripts/deploy.ts --network mainnet"
+        "generate": "hardhat run scripts/deployFromMultisigDeterministic.ts",
+        "verify:sepolia": "hardhat run scripts/test_deployment/verifyDeployment.ts --network sepolia",
+        "verify:mainnet": "hardhat run scripts/test_deployment/verifyDeployment.ts --network mainnet",
+        "test_deploy:localhost": "hardhat run scripts/test_deployment/deploy.ts --network localhost",
+        "test_deploy:sepolia": "hardhat run scripts/test_deployment/deploy.ts --network sepolia",
+        "test_deploy:mainnet": "hardhat run scripts/test_deployment/deploy.ts --network mainnet"
     },
     "engines": {
         "node": ">=18.0.0"
