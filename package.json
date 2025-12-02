@@ -12,13 +12,23 @@
         "verify:mainnet": "hardhat run scripts/test_deployment/verifyDeployment.ts --network mainnet",
         "test_deploy:localhost": "hardhat run scripts/test_deployment/deploy.ts --network localhost",
         "test_deploy:sepolia": "hardhat run scripts/test_deployment/deploy.ts --network sepolia",
-        "test_deploy:mainnet": "hardhat run scripts/test_deployment/deploy.ts --network mainnet"
+        "test_deploy:mainnet": "hardhat run scripts/test_deployment/deploy.ts --network mainnet",
+        "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
+        "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+        "deploy:mainnet": "hardhat run scripts/deploy.ts --network mainnet",
+        "upgrade:schedule:localhost": "hardhat run scripts/upgrade/schedule.ts --network localhost",
+        "upgrade:execute:localhost": "hardhat run scripts/upgrade/execute.ts --network localhost",
+        "upgrade:schedule:sepolia": "hardhat run scripts/upgrade/schedule.ts --network sepolia",
+        "upgrade:execute:sepolia": "hardhat run scripts/upgrade/execute.ts --network sepolia",
+        "upgrade:schedule:mainnet": "hardhat run scripts/upgrade/schedule.ts --network mainnet",
+        "upgrade:execute:mainnet": "hardhat run scripts/upgrade/execute.ts --network mainnet"
     },
     "engines": {
         "node": ">=18.0.0"
     },
     "dependencies": {
         "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+        "@nomicfoundation/hardhat-ledger": "^1.0.3",
         "@openzeppelin/contracts-upgradeable": "^5.4.0",
         "@openzeppelin/hardhat-upgrades": "^3.9.1",
         "@types/node": "^22.10.2",
@@ -26,5 +36,9 @@
         "hardhat": "^2.22.18",
         "ts-node": "^10.9.2",
         "typescript": "^5.7.2"
+    },
+    "overrides": {
+        "cookie": "^1.0.1",
+        "tmp": "^0.2.5"
     }
 }

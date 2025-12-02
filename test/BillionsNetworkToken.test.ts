@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers, upgrades } from 'hardhat';
-import { BillionsNetworkToken } from '../typechain-types';
+import { BillionsNetworkToken, TimelockController } from '../typechain-types';
 import { SignerWithAddress } from '@nomicfoundation/hardhat-ethers/signers';
 
 describe('Billions Network Token (BILL)', function () {
@@ -8,11 +8,14 @@ describe('Billions Network Token (BILL)', function () {
     let owner: SignerWithAddress;
     let user1: SignerWithAddress;
     let user2: SignerWithAddress;
+    let timelock: TimelockController;
 
     const TOKEN_NAME = 'Billions Network Token';
     const TOKEN_SYMBOL = 'BILL';
     const DECIMALS = 18;
     const TOTAL_SUPPLY = ethers.parseUnits('10000000000', DECIMALS); // 10 billion tokens
+    // Timelock Parameters
+    const MIN_DELAY = 2 * 24 * 60 * 60; // 172_800 seconds = 2 days
 
     beforeEach(async function () {
         [owner, user1, user2] = await ethers.getSigners();
@@ -28,6 +31,30 @@ describe('Billions Network Token (BILL)', function () {
             }
         )) as unknown as BillionsNetworkToken;
         await token.waitForDeployment();
+
+        const tokenAddress = await token.getAddress();
+        const adminAddress = await upgrades.erc1967.getAdminAddress(tokenAddress);
+
+        const TimelockController = await ethers.getContractFactory('TimelockController');
+
+        const proposers = [user1.address]; // Addresses that can propose upgrades
+        const executors = [user2.address]; // Addresses that can execute upgrades
+        const admin = owner.address; // Admin address (can grant/revoke roles)
+
+        timelock = (await TimelockController.deploy(
+            MIN_DELAY,
+            proposers,
+            executors,
+            admin
+        )) as unknown as TimelockController;
+        await timelock.waitForDeployment();
+
+        const timelockAddress = await timelock.getAddress();
+
+        // Transfer ProxyAdmin ownership to Timelock
+        const proxyAdmin = await ethers.getContractAt('ProxyAdmin', adminAddress);
+        const transferTx = await proxyAdmin.transferOwnership(timelockAddress);
+        await transferTx.wait();
     });
 
     describe('Deployment', function () {
@@ -221,16 +248,55 @@ describe('Billions Network Token (BILL)', function () {
     });
 
     describe('Upgradability', function () {
-        it('Should be upgradeable with preserved state', async function () {
+        it('Should be upgradeable via TimelockController with preserved state', async function () {
             const proxyAddress = await token.getAddress();
+            const adminAddress = await upgrades.erc1967.getAdminAddress(proxyAddress);
+            const proxyAdmin = await ethers.getContractAt('ProxyAdmin', adminAddress);
+            const proxyAdminAddress = await proxyAdmin.getAddress();
 
             // Perform some actions
             const transferAmount = ethers.parseUnits('500000', DECIMALS);
             await token.transfer(user1.address, transferAmount);
 
-            // Upgrade
+            // Propose and execute upgrade via Timelock
+
+            // Deploy new implementation
             const BillionsNetworkTokenV2 = await ethers.getContractFactory('BillionsNetworkToken');
-            const upgraded = await upgrades.upgradeProxy(proxyAddress, BillionsNetworkTokenV2);
+            const newImplementation = await BillionsNetworkTokenV2.deploy();
+            await newImplementation.waitForDeployment();
+            const newImplementationAddress = await newImplementation.getAddress();
+
+            // As we are working with same proxy the storage is already initialized
+            const initializeData = '0x';
+
+            // Encode upgradeAndCall transaction for the token ProxyAdmin to be executed by Timelock
+            const upgradeAndCallData = proxyAdmin.interface.encodeFunctionData('upgradeAndCall', [
+                proxyAddress,
+                newImplementationAddress,
+                initializeData,
+            ]);
+
+            // propose and execute via timelock by the proposer
+            const proposeTx = await timelock
+                .connect(user1)
+                .schedule(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash, MIN_DELAY);
+            await proposeTx.wait();
+
+            // Increase time to surpass minimum delay
+            await ethers.provider.send('evm_increaseTime', [MIN_DELAY + 1]);
+            await ethers.provider.send('evm_mine', []);
+
+            // Execute the upgrade via timelock by the executor
+            const executeTx = await timelock
+                .connect(user2)
+                .execute(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash);
+            await executeTx.wait();
+
+            // Get upgraded contract instance
+            const upgraded = (await ethers.getContractAt(
+                'BillionsNetworkToken',
+                proxyAddress
+            )) as unknown as BillionsNetworkToken;
 
             // Verify proxy address unchanged
             expect(await upgraded.getAddress()).to.equal(proxyAddress);
@@ -240,6 +306,207 @@ describe('Billions Network Token (BILL)', function () {
             expect(await upgraded.symbol()).to.equal(TOKEN_SYMBOL);
             expect(await upgraded.totalSupply()).to.equal(TOTAL_SUPPLY);
             expect(await upgraded.balanceOf(user1.address)).to.equal(transferAmount);
+        });
+
+        it('Should fail if TimelockController proposer is invalid', async function () {
+            const proxyAddress = await token.getAddress();
+            const adminAddress = await upgrades.erc1967.getAdminAddress(proxyAddress);
+            const proxyAdmin = await ethers.getContractAt('ProxyAdmin', adminAddress);
+            const proxyAdminAddress = await proxyAdmin.getAddress();
+
+            // Propose and execute upgrade via Timelock
+
+            // Deploy new implementation
+            const BillionsNetworkTokenV2 = await ethers.getContractFactory('BillionsNetworkToken');
+            const newImplementation = await BillionsNetworkTokenV2.deploy();
+            await newImplementation.waitForDeployment();
+            const newImplementationAddress = await newImplementation.getAddress();
+
+            // As we are working with same proxy the storage is already initialized
+            const initializeData = '0x';
+
+            // Encode upgradeAndCall transaction for the token ProxyAdmin to be executed by Timelock
+            const upgradeAndCallData = proxyAdmin.interface.encodeFunctionData('upgradeAndCall', [
+                proxyAddress,
+                newImplementationAddress,
+                initializeData,
+            ]);
+
+            // propose and execute via timelock by invalid proposer
+            await expect(
+                timelock
+                    .connect(user2)
+                    .schedule(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash, MIN_DELAY)
+            ).to.be.revertedWithCustomError(timelock, 'AccessControlUnauthorizedAccount');
+        });
+
+        it('Should fail if TimelockController executor is invalid', async function () {
+            const proxyAddress = await token.getAddress();
+            const adminAddress = await upgrades.erc1967.getAdminAddress(proxyAddress);
+            const proxyAdmin = await ethers.getContractAt('ProxyAdmin', adminAddress);
+            const proxyAdminAddress = await proxyAdmin.getAddress();
+
+            // Propose and execute upgrade via Timelock
+
+            // Deploy new implementation
+            const BillionsNetworkTokenV2 = await ethers.getContractFactory('BillionsNetworkToken');
+            const newImplementation = await BillionsNetworkTokenV2.deploy();
+            await newImplementation.waitForDeployment();
+            const newImplementationAddress = await newImplementation.getAddress();
+
+            // As we are working with same proxy the storage is already initialized
+            const initializeData = '0x';
+
+            // Encode upgradeAndCall transaction for the token ProxyAdmin to be executed by Timelock
+            const upgradeAndCallData = proxyAdmin.interface.encodeFunctionData('upgradeAndCall', [
+                proxyAddress,
+                newImplementationAddress,
+                initializeData,
+            ]);
+
+            // propose and execute via timelock by the proposer
+            const proposeTx = await timelock
+                .connect(user1)
+                .schedule(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash, MIN_DELAY);
+            await proposeTx.wait();
+
+            // Increase time to surpass minimum delay
+            await ethers.provider.send('evm_increaseTime', [MIN_DELAY + 1]);
+            await ethers.provider.send('evm_mine', []);
+
+            // Execute the upgrade via timelock by the executor
+            await expect(
+                timelock
+                    .connect(user1)
+                    .execute(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash)
+            ).to.be.revertedWithCustomError(timelock, 'AccessControlUnauthorizedAccount');
+        });
+
+        it('Should fail if proposed schedule is less than TimelockController minimum delay', async function () {
+            const proxyAddress = await token.getAddress();
+            const adminAddress = await upgrades.erc1967.getAdminAddress(proxyAddress);
+            const proxyAdmin = await ethers.getContractAt('ProxyAdmin', adminAddress);
+            const proxyAdminAddress = await proxyAdmin.getAddress();
+
+            // Propose and execute upgrade via Timelock
+
+            // Deploy new implementation
+            const BillionsNetworkTokenV2 = await ethers.getContractFactory('BillionsNetworkToken');
+            const newImplementation = await BillionsNetworkTokenV2.deploy();
+            await newImplementation.waitForDeployment();
+            const newImplementationAddress = await newImplementation.getAddress();
+
+            // As we are working with same proxy the storage is already initialized
+            const initializeData = '0x';
+
+            // Encode upgradeAndCall transaction for the token ProxyAdmin to be executed by Timelock
+            const upgradeAndCallData = proxyAdmin.interface.encodeFunctionData('upgradeAndCall', [
+                proxyAddress,
+                newImplementationAddress,
+                initializeData,
+            ]);
+
+            // propose and execute via timelock by the proposer
+            await expect(
+                timelock
+                    .connect(user1)
+                    .schedule(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash, MIN_DELAY - 1)
+            ).to.be.revertedWithCustomError(timelock, 'TimelockInsufficientDelay');
+        });
+
+        it('Should fail if execution happens before TimelockController delay scheduled', async function () {
+            const proxyAddress = await token.getAddress();
+            const adminAddress = await upgrades.erc1967.getAdminAddress(proxyAddress);
+            const proxyAdmin = await ethers.getContractAt('ProxyAdmin', adminAddress);
+            const proxyAdminAddress = await proxyAdmin.getAddress();
+
+            // Propose and execute upgrade via Timelock
+
+            // Deploy new implementation
+            const BillionsNetworkTokenV2 = await ethers.getContractFactory('BillionsNetworkToken');
+            const newImplementation = await BillionsNetworkTokenV2.deploy();
+            await newImplementation.waitForDeployment();
+            const newImplementationAddress = await newImplementation.getAddress();
+
+            // As we are working with same proxy the storage is already initialized
+            const initializeData = '0x';
+
+            // Encode upgradeAndCall transaction for the token ProxyAdmin to be executed by Timelock
+            const upgradeAndCallData = proxyAdmin.interface.encodeFunctionData('upgradeAndCall', [
+                proxyAddress,
+                newImplementationAddress,
+                initializeData,
+            ]);
+
+            // propose and execute via timelock by the proposer
+            const proposeTx = await timelock
+                .connect(user1)
+                .schedule(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash, MIN_DELAY);
+            await proposeTx.wait();
+
+            // Execute the upgrade via timelock by the executor
+            await expect(
+                timelock
+                    .connect(user2)
+                    .execute(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash)
+            ).to.be.revertedWithCustomError(timelock, 'TimelockUnexpectedOperationState');
+        });
+
+        it('Should fail if scheduled data transaction TimelockController differs from executed data transaction', async function () {
+            const proxyAddress = await token.getAddress();
+            const adminAddress = await upgrades.erc1967.getAdminAddress(proxyAddress);
+            const proxyAdmin = await ethers.getContractAt('ProxyAdmin', adminAddress);
+            const proxyAdminAddress = await proxyAdmin.getAddress();
+
+            // Perform some actions
+            const transferAmount = ethers.parseUnits('500000', DECIMALS);
+            await token.transfer(user1.address, transferAmount);
+
+            // Propose and execute upgrade via Timelock
+
+            // Deploy new implementation
+            const BillionsNetworkTokenV2 = await ethers.getContractFactory('BillionsNetworkToken');
+            const newImplementation = await BillionsNetworkTokenV2.deploy();
+            await newImplementation.waitForDeployment();
+            const newImplementationAddress = await newImplementation.getAddress();
+
+            // As we are working with same proxy the storage is already initialized
+            const initializeData = '0x';
+
+            // Encode upgradeAndCall transaction for the token ProxyAdmin to be executed by Timelock
+            const upgradeAndCallData = proxyAdmin.interface.encodeFunctionData('upgradeAndCall', [
+                proxyAddress,
+                newImplementationAddress,
+                initializeData,
+            ]);
+
+            // propose and execute via timelock by the proposer
+            const proposeTx = await timelock
+                .connect(user1)
+                .schedule(proxyAdminAddress, 0, upgradeAndCallData, ethers.ZeroHash, ethers.ZeroHash, MIN_DELAY);
+            await proposeTx.wait();
+
+            // Increase time to surpass minimum delay
+            await ethers.provider.send('evm_increaseTime', [MIN_DELAY + 1]);
+            await ethers.provider.send('evm_mine', []);
+
+            // Deploy another new implementation to create different upgrade data for execution
+            const newImplementation2 = await BillionsNetworkTokenV2.deploy();
+            await newImplementation2.waitForDeployment();
+            const newImplementation2Address = await newImplementation2.getAddress();
+
+            const upgradeAndCallData2 = proxyAdmin.interface.encodeFunctionData('upgradeAndCall', [
+                proxyAddress,
+                newImplementation2Address,
+                initializeData,
+            ]);
+
+            // Execute the upgrade via timelock by the executor
+            await expect(
+                timelock
+                    .connect(user2)
+                    .execute(proxyAdminAddress, 0, upgradeAndCallData2, ethers.ZeroHash, ethers.ZeroHash)
+            ).to.be.revertedWithCustomError(timelock, 'TimelockUnexpectedOperationState');
         });
     });
 });

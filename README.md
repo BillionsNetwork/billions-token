@@ -36,13 +36,14 @@ npm run deploy:mainnet
 
 All upgrades go through the Timelock (2-day minimum delay):
 
-1. Propose upgrade transaction via Timelock
+1. Propose upgrade transaction via Timelock `schedule`
 2. Wait 2 days (minimum delay)
-3. Execute upgrade transaction
+3. Execute upgrade transaction via Timelock `execute`
 
 ```bash
 # Example upgrade flow (requires Timelock interaction)
-PROXY_ADDRESS=0x... npm run upgrade:sepolia
+TOKEN_PROXY_ADDRESS=0x... npm run upgrade:schedule:sepolia
+TOKEN_PROXY_ADDRESS=0x... npm run upgrade:execute:sepolia
 ```
 
 ## Architecture
