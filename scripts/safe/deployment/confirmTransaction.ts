@@ -1,0 +1,116 @@
+import hre, { ethers } from 'hardhat';
+import { defineChain } from 'viem';
+import fs from 'fs';
+import path from 'path';
+import SafeApiKit from '@safe-global/api-kit';
+import Safe from '@safe-global/protocol-kit';
+import { MetaTransactionData, OperationType } from '@safe-global/types-kit';
+
+async function main() {
+    const ownerIndex = 1; // Use the owner from safe-config json to confirm deployment transactions
+    const transactionIndex = 2; // Index of the transaction to confirm
+
+    const network = hre.network.name;
+    const safeConfigPath = path.join(__dirname, `../safe-config-${network}.json`);
+
+    if (!fs.existsSync(safeConfigPath)) {
+        throw new Error(`Safe config file not found: ${safeConfigPath}`);
+    }
+    const safeConfig = JSON.parse(fs.readFileSync(safeConfigPath, 'utf-8'));
+    if (!safeConfig.chain) {
+        throw new Error(`chain not found in safe config file: ${safeConfigPath}`);
+    }
+    if (!safeConfig.safeAddress) {
+        throw new Error(`safeAddress not found in safe config file: ${safeConfigPath}`);
+    }
+    const chain = defineChain(safeConfig.chain);
+
+    const protocolKit = await Safe.init({
+        provider: chain.rpcUrls.default.http[0],
+        signer: safeConfig.privateKeys[ownerIndex],
+        safeAddress: safeConfig.safeAddress,
+    });
+
+    const safeAddress = await protocolKit.getAddress();
+    console.log('Safe Address:', safeAddress);
+
+    // Read transactions from output.json
+    const outputPath = path.join(__dirname, './output-deployment-transactions.json');
+    const transactions = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
+    if (transactionIndex >= transactions.length) {
+        throw new Error(`Invalid transaction index: ${transactionIndex}`);
+    }
+
+    const tx = transactions[transactionIndex];
+    const owner = safeConfig.owners[ownerIndex];
+
+    console.log('='.repeat(80));
+    console.log(
+        `Billions Network Token - Confirming transaction ${transactionIndex + 1}/${transactions.length} "${tx.name}"`
+    );
+    console.log('='.repeat(80));
+    console.log('\nOwner signer:', owner);
+    console.log('Balance:', ethers.formatEther(await ethers.provider.getBalance(owner)), 'ETH');
+
+    console.log(
+        `\nFound ${transactions.length} transactions to propose and confirm.\n[${transactions
+            .map((tx: any) => tx.name)
+            .join(', ')}]\n`
+    );
+
+    const apiKit = new SafeApiKit({
+        chainId: BigInt(safeConfig.chain.id),
+        apiKey: safeConfig.apiKey,
+    });
+
+    let pendingTransactions = (await apiKit.getPendingTransactions(safeAddress)).results;
+    console.log(
+        'Pending transactions in Safe Services for this deployment:',
+        pendingTransactions.map((tx) => tx.safeTxHash)
+    );
+
+    console.log('-'.repeat(80));
+    console.log(`[${transactionIndex + 1}/${transactions.length}] ${tx.name}`);
+    console.log(`   To: ${tx.to}`);
+    console.log(`   Predicted Address: ${tx.predictedAddress}`);
+
+    // Check if contract is already deployed
+    const existingCode = await ethers.provider.getCode(tx.predictedAddress);
+    if (existingCode !== '0x') {
+        throw new Error('   ⏭️  Already deployed');
+    } else {
+        const safeTransactionData: MetaTransactionData = {
+            to: tx.to,
+            value: tx.value,
+            data: tx.data,
+            operation: OperationType.Call,
+        };
+
+        // Generate the Safe transaction to get safeTxHash
+        const safeTransaction = await protocolKit.createTransaction({
+            transactions: [safeTransactionData],
+        });
+
+        // Deterministic hash based on transaction parameters
+        const safeTxHash = await protocolKit.getTransactionHash(safeTransaction);
+
+        // Sign transaction to verify that the transaction is coming from owner 1
+        const senderSignature = await protocolKit.signHash(safeTxHash);
+
+        // Send the transaction
+        console.log('   📤 Confirming Safe transaction...', safeTxHash);
+        await apiKit.confirmTransaction(safeTxHash, senderSignature.data);
+    }
+    pendingTransactions = (await apiKit.getPendingTransactions(safeAddress)).results;
+    console.log(
+        '\nPending transactions in Safe Services for this deployment:',
+        pendingTransactions.map((tx) => tx.safeTxHash)
+    );
+}
+
+main()
+    .then(() => process.exit(0))
+    .catch((error) => {
+        console.error('\n❌ Deployment failed:', error);
+        process.exit(1);
+    });

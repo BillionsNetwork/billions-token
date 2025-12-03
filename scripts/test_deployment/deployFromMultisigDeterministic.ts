@@ -19,7 +19,7 @@ async function main() {
     const MIN_DELAY = 2 * 24 * 60 * 60; // 2 days
 
     // Factory address (Arachnid's Deterministic Deployment Proxy)
-    const FACTORY_ADDRESS = '0x4e59b44847b379578588920ca78fbf26c0b4956c';
+    const FACTORY_ADDRESS = '0x4e59b44847b379578588920cA78FbF26c0B4956C';
 
     console.log('Starting deterministic deployment generation...');
     console.log('Multisig:', MULTISIG);

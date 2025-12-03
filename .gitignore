@@ -9,3 +9,5 @@ coverage
 artifacts/
 .vscode
 typechain-types
+safe-config*.json
+output-deployment-transactions.json

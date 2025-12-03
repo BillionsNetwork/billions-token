@@ -12,7 +12,7 @@ async function main() {
     console.log('Balance:', ethers.formatEther(await ethers.provider.getBalance(deployer.address)), 'ETH');
 
     // Read transactions from output.json
-    const outputPath = path.join(__dirname, '../output.json');
+    const outputPath = path.join(__dirname, './output.json');
     const transactions = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
 
     console.log(`\nFound ${transactions.length} transactions to send\n`);
