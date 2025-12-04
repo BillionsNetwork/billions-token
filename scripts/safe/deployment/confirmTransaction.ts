@@ -7,8 +7,8 @@ import Safe from '@safe-global/protocol-kit';
 import { MetaTransactionData, OperationType } from '@safe-global/types-kit';
 
 async function main() {
-    const ownerIndex = 1; // Use the owner from safe-config json to confirm deployment transactions
-    const transactionIndex = 2; // Index of the transaction to confirm
+    const ownerIndex = 0; // Use the owner from safe-config json to confirm deployment transactions
+    const transactionIndex = 0; // Index of the transaction to confirm
 
     const network = hre.network.name;
     const safeConfigPath = path.join(__dirname, `../safe-config-${network}.json`);
@@ -35,7 +35,7 @@ async function main() {
     console.log('Safe Address:', safeAddress);
 
     // Read transactions from output.json
-    const outputPath = path.join(__dirname, './output-deployment-transactions.json');
+    const outputPath = path.join(__dirname, '../../output.json');
     const transactions = JSON.parse(fs.readFileSync(outputPath, 'utf8'));
     if (transactionIndex >= transactions.length) {
         throw new Error(`Invalid transaction index: ${transactionIndex}`);

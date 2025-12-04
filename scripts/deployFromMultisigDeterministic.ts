@@ -38,7 +38,7 @@ async function main() {
     const timelockCreationCode = timelockDeployTx.data;
     const timelockInitCodeHash = ethers.keccak256(timelockCreationCode);
 
-    const timelockResult = mineSalt(timelockInitCodeHash, FACTORY_ADDRESS, '0x00ad', '');
+    const timelockResult = await mineSalt(timelockInitCodeHash, FACTORY_ADDRESS, '0x00ad', '');
     console.log(`Found Timelock Salt: ${timelockResult.salt}`);
     console.log(`Timelock Address: ${timelockResult.address}`);
 
@@ -56,7 +56,7 @@ async function main() {
     const implCreationCode = (await BillionsNetworkToken.getDeployTransaction()).data;
     const implInitCodeHash = ethers.keccak256(implCreationCode);
 
-    const implResult = mineSalt(implInitCodeHash, FACTORY_ADDRESS, '0x001b', '');
+    const implResult = await mineSalt(implInitCodeHash, FACTORY_ADDRESS, '0x001b', '');
     console.log(`Found Implementation Salt: ${implResult.salt}`);
     console.log(`Implementation Address: ${implResult.address}`);
 
@@ -92,7 +92,7 @@ async function main() {
     ).data;
     const proxyInitCodeHash = ethers.keccak256(proxyCreationCode);
 
-    const proxyResult = mineSalt(proxyInitCodeHash, FACTORY_ADDRESS, '0xb1110', '');
+    const proxyResult = await mineSalt(proxyInitCodeHash, FACTORY_ADDRESS, '0xb1110', '');
     console.log(`Found Proxy Salt: ${proxyResult.salt}`);
     console.log(`Proxy Address: ${proxyResult.address}`);
 
@@ -110,12 +110,12 @@ async function main() {
     console.log(`\nSaved ${transactions.length} transactions to output.json`);
 }
 
-function mineSalt(
+async function mineSalt(
     initCodeHash: string,
     factory: string,
     prefix: string,
     suffix: string
-): { salt: string; address: string } {
+): Promise<{ salt: string; address: string }> {
     let salt = 0n;
     let address = '';
     const prefixLower = prefix.toLowerCase();
@@ -129,7 +129,11 @@ function mineSalt(
         address = ethers.getCreate2Address(factory, saltHex, initCodeHash).toLowerCase();
 
         if (address.startsWith(prefixLower) && address.endsWith(suffixLower)) {
-            return { salt: saltHex, address: address };
+            // Check if contract is already deployed
+            const existingCode = await ethers.provider.getCode(address);
+            if (existingCode === '0x') {
+                return { salt: saltHex, address: address };
+            }
         }
 
         salt++;

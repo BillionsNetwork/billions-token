@@ -64,9 +64,9 @@ npm run deploy:mainnet
 3. Copy the safe address deployed to the `safeAddress` parameter of your `safe-config-<network>.json`
 4. Generate the transactions for the deployment that will be needed to be executed by each owner of the Safe Multisig.
         ```bash
-        npm run safe:generate:transactions:sepolia
+        npm run generate:deployment:sepolia
         ```
-        This will generate `output-deployment-transactions.json` with the transactions to be proposed, confirmed and executed later.
+        This will generate `output.json` with the transactions to be proposed, confirmed and executed later.
 5. Propose first transaction with first owner (by default). The transaction will be confirmed also for this owner.
         ```
         const ownerIndex = 0; // Use the owner from safe-config json to send deployment transactions
