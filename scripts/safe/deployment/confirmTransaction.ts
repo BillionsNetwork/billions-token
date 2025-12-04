@@ -5,10 +5,14 @@ import path from 'path';
 import SafeApiKit from '@safe-global/api-kit';
 import Safe from '@safe-global/protocol-kit';
 import { MetaTransactionData, OperationType } from '@safe-global/types-kit';
+import { signHash } from '../../../helpers/utils';
 
 async function main() {
-    const ownerIndex = 0; // Use the owner from safe-config json to confirm deployment transactions
     const transactionIndex = 0; // Index of the transaction to confirm
+
+    // Get signer to sign the transaction hash for the confirmation 
+    // This allows to configure LEDGER if we need for signing with hardhat plugin
+    const [signer] = await ethers.getSigners();
 
     const network = hre.network.name;
     const safeConfigPath = path.join(__dirname, `../safe-config-${network}.json`);
@@ -23,11 +27,14 @@ async function main() {
     if (!safeConfig.safeAddress) {
         throw new Error(`safeAddress not found in safe config file: ${safeConfigPath}`);
     }
+    if (!safeConfig.privateKeySender) {
+        throw new Error('privateKeySender not set in safe config file');
+    }
     const chain = defineChain(safeConfig.chain);
 
     const protocolKit = await Safe.init({
         provider: chain.rpcUrls.default.http[0],
-        signer: safeConfig.privateKeys[ownerIndex],
+        signer: safeConfig.privateKeySender,
         safeAddress: safeConfig.safeAddress,
     });
 
@@ -42,7 +49,8 @@ async function main() {
     }
 
     const tx = transactions[transactionIndex];
-    const owner = safeConfig.owners[ownerIndex];
+    const wallet = new ethers.Wallet(safeConfig.privateKeySender);
+    const owner = wallet.address;
 
     console.log('='.repeat(80));
     console.log(
@@ -94,12 +102,10 @@ async function main() {
         // Deterministic hash based on transaction parameters
         const safeTxHash = await protocolKit.getTransactionHash(safeTransaction);
 
-        // Sign transaction to verify that the transaction is coming from owner 1
-        const senderSignature = await protocolKit.signHash(safeTxHash);
-
+        const signedMessage = await signHash(signer, safeTxHash);
         // Send the transaction
         console.log('   📤 Confirming Safe transaction...', safeTxHash);
-        await apiKit.confirmTransaction(safeTxHash, senderSignature.data);
+        await apiKit.confirmTransaction(safeTxHash, signedMessage);
     }
     pendingTransactions = (await apiKit.getPendingTransactions(safeAddress)).results;
     console.log(

@@ -7,7 +7,6 @@ import Safe from '@safe-global/protocol-kit';
 import { MetaTransactionData, OperationType } from '@safe-global/types-kit';
 
 async function main() {
-    const ownerIndex = 0; // Use the owner from safe-config json to propose deployment transactions
     const transactionIndex = 0; // Index of the transaction to propose
 
     const network = hre.network.name;
@@ -23,11 +22,14 @@ async function main() {
     if (!safeConfig.safeAddress) {
         throw new Error(`safeAddress not found in safe config file: ${safeConfigPath}`);
     }
+    if (!safeConfig.privateKeySender) {
+        throw new Error('privateKeySender not set in safe config file');
+    }
     const chain = defineChain(safeConfig.chain);
 
     const protocolKit = await Safe.init({
         provider: chain.rpcUrls.default.http[0],
-        signer: safeConfig.privateKeys[ownerIndex],
+        signer: safeConfig.privateKeySender,
         safeAddress: safeConfig.safeAddress,
     });
 
@@ -42,7 +44,8 @@ async function main() {
     }
 
     const tx = transactions[transactionIndex];
-    const owner = safeConfig.owners[ownerIndex];
+    const wallet = new ethers.Wallet(safeConfig.privateKeySender);
+    const owner = wallet.address;
 
     console.log('='.repeat(80));
     console.log(
@@ -94,6 +97,7 @@ async function main() {
 
         // Deterministic hash based on transaction parameters
         const safeTxHash = await protocolKit.getTransactionHash(safeTransaction);
+        console.log('   🆔 Safe Transaction Hash:', safeTxHash);
 
         // Sign transaction to verify that the transaction is coming from owner 1
         const senderSignature = await protocolKit.signHash(safeTxHash);

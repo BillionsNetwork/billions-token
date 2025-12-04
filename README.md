@@ -34,7 +34,7 @@ npm run deploy:mainnet
 
 ## Deploy with Safe Multisig
 
-1. Create `scripts/safe/deployment/safe-config-<network>.json` for the configuration of the Safe account filling the number of owners, private keys, etc. for your new Safe Multisig.
+1. Create `scripts/safe/deployment/safe-config-<network>.json` for the configuration of the Safe account filling the number of owners, private key for the sender, etc. for your new Safe Multisig.
 
         Example for Ethereum Sepolia:
         ```
@@ -48,7 +48,7 @@ npm run deploy:mainnet
                 }
         },
         "owners": ["ethAddress1", "ethAddress2"],
-        "privateKeys": ["privateKey1", "privateKey2"],
+        "privateKeySender": "privateKeySender",
         "threshold": 2,
         "apiKey": "your_safe_api_key",
         "safeAddress": ""
