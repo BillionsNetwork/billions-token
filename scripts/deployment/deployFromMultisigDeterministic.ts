@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 async function main() {
-    const inputPath = path.join(__dirname, 'input.json');
+    const inputPath = path.join(__dirname, '../input.json');
     const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
     const MULTISIG = input.MULTISIG;
 
@@ -105,9 +105,9 @@ async function main() {
     });
 
     // Output to file
-    const outputPath = path.join(__dirname, 'output.json');
+    const outputPath = path.join(__dirname, 'output-deployment.json');
     fs.writeFileSync(outputPath, JSON.stringify(transactions, null, 2));
-    console.log(`\nSaved ${transactions.length} transactions to output.json`);
+    console.log(`\nSaved ${transactions.length} transactions to output-deployment.json`);
 }
 
 async function mineSalt(

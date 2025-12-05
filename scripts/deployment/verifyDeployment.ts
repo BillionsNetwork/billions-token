@@ -10,8 +10,8 @@ async function main() {
     console.log('='.repeat(60));
 
     // Read input and output files
-    const inputPath = path.join(__dirname, 'input.json');
-    const outputPath = path.join(__dirname, 'output.json');
+    const inputPath = path.join(__dirname, '../input.json');
+    const outputPath = path.join(__dirname, 'output-deployment.json');
 
     const input = JSON.parse(fs.readFileSync(inputPath, 'utf8'));
     const output = JSON.parse(fs.readFileSync(outputPath, 'utf8'));

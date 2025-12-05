@@ -10,4 +10,4 @@ artifacts/
 .vscode
 typechain-types
 safe-config*.json
-output.json
+output*.json

@@ -3,8 +3,8 @@ import { proposeTransaction } from '../../../helpers/safe';
 
 async function main() {
     const transactionIndex = 0; // Index of the transaction to propose
-    // Read transactions from output-deployment.json
-    const transactionsOutputPath = path.join(__dirname, '../../deployment/output-deployment.json');
+    // Read transactions from output-execute-upgrade.json
+    const transactionsOutputPath = path.join(__dirname, '../../upgrade/output-execute-upgrade.json');
     await proposeTransaction(transactionIndex, transactionsOutputPath);
 }
 
