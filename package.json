@@ -52,7 +52,7 @@
         "safe:confirm:execute:upgrade:transaction:sepolia": "hardhat run scripts/safe/execute-upgrade/confirmTransaction.ts --network sepolia",
         "safe:confirm:execute:upgrade:transaction:mainnet": "hardhat run scripts/safe/execute-upgrade/confirmTransaction.ts --network mainnet",
         "safe:execute:execute:upgrade:transaction:localhost": "hardhat run scripts/safe/execute-upgrade/executeTransaction.ts --network localhost",
-        "safe:execute:execute:upgrade:transaction:sepolia": "hardhat run scripts/safe/execexecuteute-upgrade/executeTransaction.ts --network sepolia",
+        "safe:execute:execute:upgrade:transaction:sepolia": "hardhat run scripts/safe/execute-upgrade/executeTransaction.ts --network sepolia",
         "safe:execute:execute:upgrade:transaction:mainnet": "hardhat run scripts/safe/execute-upgrade/executeTransaction.ts --network mainnet"
 
     },
