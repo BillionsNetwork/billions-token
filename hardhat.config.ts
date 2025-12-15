@@ -37,25 +37,25 @@ const config: HardhatUserConfig = {
             url: process.env.ETHEREUM_MAINNET_RPC_URL || `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
             chainId: 1,
         },
-        hardhat: {
-          chainId: 11155111,
-          forking: {
-            url: `${process.env.ETHEREUM_SEPOLIA_RPC_URL}`,
-          },
-          chains: {
-            11155111: {
-              hardforkHistory: {
-                london: 100000,
-              },
-            },
-          },
-          accounts: [
-            {
-              privateKey: process.env.PRIVATE_KEY as string,
-              balance: "1000000000000000000000000",
-            },
-          ],
-        },
+        // hardhat: {
+        //   chainId: 11155111,
+        //   forking: {
+        //     url: `${process.env.ETHEREUM_SEPOLIA_RPC_URL}`,
+        //   },
+        //   chains: {
+        //     11155111: {
+        //       hardforkHistory: {
+        //         london: 100000,
+        //       },
+        //     },
+        //   },
+        //   accounts: [
+        //     {
+        //       privateKey: process.env.PRIVATE_KEY as string,
+        //       balance: "1000000000000000000000000",
+        //     },
+        //   ],
+        // },
         localhost: {
             url: 'http://127.0.0.1:8545',
         },

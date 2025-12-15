@@ -19,18 +19,51 @@ cp .env.example .env  # Add your keys
 
 ## Deploy
 
-⚠️ **Before deploying**: Update `INITIAL_OWNER` and `TIMELOCK_ADMIN_ADDRESS` in `scripts/deploy.ts`
+### 1. Configure Multisig
+
+Update `scripts/input.json` with your multisig address:
+
+```json
+{
+    "MULTISIG": "0xYourMultisigAddress"
+}
+```
+
+### 2. Generate Deterministic Deployment Transactions
 
 ```bash
-npm run deploy:sepolia
-npm run deploy:mainnet
+npm run generate:deployment:sepolia
+npm run generate:deployment:mainnet
 ```
+
+This creates `scripts/deployment/output-deployment.json` with deployment transactions that use CREATE2 for deterministic addresses:
+
+-   TimelockController: starts with `0x00ad`
+-   Implementation: starts with `0x001b`
+-   Proxy: starts with `0xb1110`
+
+### 3. Deploy to Network
+
+```bash
+npm run deploy:sepolia   # Sepolia testnet
+npm run deploy:mainnet   # Ethereum mainnet
+```
+
+### 4. Verify Contracts
+
+```bash
+npm run verify:sepolia   # Verify on Sepolia
+npm run verify:mainnet   # Verify on Mainnet
+```
+
+This verifies all contracts on Etherscan and validates deployment parameters.
 
 ### What Gets Deployed
 
 1. **TimelockController** - Governance contract with 2-day delay
-2. **BillionsToken** - Token implementation + Transparent Proxy
-3. **ProxyAdmin** - Owned by TimelockController (for upgrades)
+2. **BillionsNetworkToken** - Token implementation
+3. **TransparentUpgradeableProxy** - Proxy pointing to implementation
+4. **ProxyAdmin** - Owned by TimelockController (deployed by proxy constructor)
 
 ## Deploy with Safe Multisig
 
@@ -107,15 +140,10 @@ npm run deploy:mainnet
 
 All upgrades go through the Timelock (2-day minimum delay):
 
-1. Propose upgrade transaction via Timelock `schedule`
-2. Wait 2 days (minimum delay)
-3. Execute upgrade transaction via Timelock `execute`
-
-```bash
-# Example upgrade flow (requires Timelock interaction)
-TOKEN_PROXY_ADDRESS=0x... npm run upgrade:schedule:sepolia
-TOKEN_PROXY_ADDRESS=0x... npm run upgrade:execute:sepolia
-```
+1. Deploy new implementation contract
+2. Propose upgrade transaction via Timelock (call `ProxyAdmin.upgradeAndCall`)
+3. Wait 2 days (minimum delay)
+4. Execute upgrade transaction
 
 ## Upgrade with Safe Multisig
 
@@ -196,7 +224,7 @@ TOKEN_PROXY_ADDRESS=0x... npm run upgrade:execute:sepolia
 TimelockController (2-day delay)
     └── owns ProxyAdmin
             └── manages Proxy upgrades
-                    └── BillionsToken Implementation
+                    └── BillionsNetworkToken Implementation
 ```
 
 ## Features
@@ -205,7 +233,8 @@ TimelockController (2-day delay)
 ✅ ERC20Permit (Gasless approvals)  
 ✅ Upgradeable (Transparent Proxy)  
 ✅ Timelock-controlled upgrades  
-✅ Fixed supply (no mint/burn)
+✅ Fixed supply (no mint/burn)  
+✅ Deterministic deployment addresses (CREATE2)
 
 ## Security
 
