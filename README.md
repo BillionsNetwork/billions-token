@@ -242,3 +242,11 @@ TimelockController (2-day delay)
 -   ProxyAdmin controlled by Timelock
 -   No emergency pause or admin functions on token
 -   All token supply minted at initialization
+
+## Ethereum Mainnet Deployment
+The deployment in Ethereum Mainnet was done with the Safe Multisig `0xa31c18d0e9EBab1cB4d4B96193DCb44058F4bb75`.
+|     Smart contract      |     Address                                |
+|:-----------------------:|:------------------------------------------:|
+|    **TimelockController**        | [0x00ad9eb03caf7c5e616ed843d46294e1932cc8ca](https://etherscan.io/address/0x00ad9eb03caf7c5e616ed843d46294e1932cc8ca) |
+|    **BillionsNetworkToken (proxy)**    | [0xb1110919016846972056ab995054d65560d5f05e](https://etherscan.io/address/0xb1110919016846972056ab995054d65560d5f05e) |
+
