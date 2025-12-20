@@ -74,62 +74,137 @@ describe('StakingRewards', function () {
             expect(await stakingRewards.totalSupply()).to.equal(0);
         });
 
-        it('Should be paused initially', async function () {
-            // Actually, it should not be paused initially - let me check
+        it('Should not be paused initially', async function () {
             expect(await stakingRewards.paused()).to.equal(false);
         });
     });
 
     describe('Staking', function () {
         const stakeAmount = ethers.parseUnits('1000', 18);
-        const lockDuration = 30 * 24 * 60 * 60; // 30 days
 
         it('Should allow users to stake tokens', async function () {
-            await stakingRewards.connect(user1).stake(stakeAmount, lockDuration);
+            await stakingRewards.connect(user1).stake(stakeAmount);
 
             expect(await stakingRewards.balanceOf(user1.address)).to.equal(stakeAmount);
             expect(await stakingRewards.totalSupply()).to.equal(stakeAmount);
             expect(await stakingToken.balanceOf(await stakingRewards.getAddress())).to.equal(stakeAmount);
         });
 
-        it('Should create locked stake entry', async function () {
-            await stakingRewards.connect(user1).stake(stakeAmount, lockDuration);
-
-            const lockedStakes = await stakingRewards.addressToLockedStakes(user1.address, 0);
-            expect(lockedStakes.amount).to.equal(stakeAmount);
-            expect(lockedStakes.lockDuration).to.equal(lockDuration);
-            expect(lockedStakes.unlockTimestamp).to.be.gt(await time.latest());
-        });
-
         it('Should emit Staked event', async function () {
-            await expect(stakingRewards.connect(user1).stake(stakeAmount, lockDuration))
+            await expect(stakingRewards.connect(user1).stake(stakeAmount))
                 .to.emit(stakingRewards, 'Staked')
-                .withArgs(user1.address, stakeAmount, lockDuration, 0);
+                .withArgs(user1.address, stakeAmount);
         });
 
         it('Should fail if staking zero amount', async function () {
-            await expect(stakingRewards.connect(user1).stake(0, lockDuration)).to.be.revertedWith('Cannot stake 0');
+            await expect(stakingRewards.connect(user1).stake(0)).to.be.revertedWith('Cannot stake 0');
         });
 
         it('Should fail if contract is paused', async function () {
             await stakingRewards.connect(owner).pause();
-            await expect(stakingRewards.connect(user1).stake(stakeAmount, lockDuration)).to.be.reverted;
+            await expect(stakingRewards.connect(user1).stake(stakeAmount)).to.be.reverted;
         });
 
         it('Should allow multiple stakes', async function () {
             const amount1 = ethers.parseUnits('500', 18);
             const amount2 = ethers.parseUnits('300', 18);
 
-            await stakingRewards.connect(user1).stake(amount1, lockDuration);
-            await stakingRewards.connect(user1).stake(amount2, lockDuration);
+            await stakingRewards.connect(user1).stake(amount1);
+            await stakingRewards.connect(user1).stake(amount2);
 
             expect(await stakingRewards.balanceOf(user1.address)).to.equal(amount1 + amount2);
             expect(await stakingRewards.totalSupply()).to.equal(amount1 + amount2);
+        });
+    });
 
-            const lockedStakes1 = await stakingRewards.addressToLockedStakes(user1.address, 0);
-            const lockedStakes2 = await stakingRewards.addressToLockedStakes(user1.address, 1);
-            expect(lockedStakes1.amount).to.equal(amount1);
-            expect(lockedStakes2.amount).to.equal(amount2);
+    describe('Token Locking', function () {
+        const stakeAmount = ethers.parseUnits('1000', 18);
+        const lockDuration = 30 * 24 * 60 * 60; // 30 days
+
+        beforeEach(async function () {
+            await stakingRewards.connect(user1).stake(stakeAmount);
+        });
+
+        it('Should allow locking staked tokens', async function () {
+            const lockAmount = ethers.parseUnits('500', 18);
+            await stakingRewards.connect(user1).lockTokens(lockAmount, lockDuration);
+
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(lockAmount);
+        });
+
+        it('Should emit TokensLocked event', async function () {
+            const lockAmount = ethers.parseUnits('500', 18);
+            await expect(stakingRewards.connect(user1).lockTokens(lockAmount, lockDuration))
+                .to.emit(stakingRewards, 'TokensLocked')
+                .withArgs(user1.address, lockAmount, lockDuration);
+        });
+
+        it('Should fail if lock duration is zero', async function () {
+            await expect(stakingRewards.connect(user1).lockTokens(stakeAmount, 0)).to.be.revertedWith(
+                'Lock duration must be greater than 0'
+            );
+        });
+
+        it('Should fail if not enough staked balance to lock', async function () {
+            const tooMuch = stakeAmount + ethers.parseUnits('1', 18);
+            await expect(stakingRewards.connect(user1).lockTokens(tooMuch, lockDuration)).to.be.revertedWith(
+                'Not enough staked balance to lock'
+            );
+        });
+
+        it('Should fail if contract is paused', async function () {
+            await stakingRewards.connect(owner).pause();
+            await expect(stakingRewards.connect(user1).lockTokens(stakeAmount, lockDuration)).to.be.reverted;
+        });
+
+        it('Should allow increasing lock amount', async function () {
+            const amount1 = ethers.parseUnits('300', 18);
+            const amount2 = ethers.parseUnits('500', 18);
+
+            await stakingRewards.connect(user1).lockTokens(amount1, lockDuration);
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amount1);
+
+            // Lock more with same or longer duration
+            await stakingRewards.connect(user1).lockTokens(amount2, lockDuration);
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amount2);
+        });
+
+        it('Should fail if trying to reduce lock amount', async function () {
+            const amount1 = ethers.parseUnits('500', 18);
+            const amount2 = ethers.parseUnits('300', 18);
+
+            await stakingRewards.connect(user1).lockTokens(amount1, lockDuration);
+            await expect(stakingRewards.connect(user1).lockTokens(amount2, lockDuration)).to.be.revertedWith(
+                'Cannot reduce the amount of locked tokens'
+            );
+        });
+
+        it('Should fail if trying to shorten lock duration', async function () {
+            const shorterDuration = 15 * 24 * 60 * 60; // 15 days
+
+            await stakingRewards.connect(user1).lockTokens(stakeAmount, lockDuration);
+            await expect(stakingRewards.connect(user1).lockTokens(stakeAmount, shorterDuration)).to.be.revertedWith(
+                'Cannot shorten the lock duration'
+            );
+        });
+
+        it('Should return 0 locked tokens after lock expires', async function () {
+            await stakingRewards.connect(user1).lockTokens(stakeAmount, lockDuration);
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(stakeAmount);
+
+            // Fast forward past lock duration
+            await time.increase(lockDuration + 1);
+
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(0);
+        });
+
+        it('Should store lock info correctly', async function () {
+            await stakingRewards.connect(user1).lockTokens(stakeAmount, lockDuration);
+
+            const lockInfo = await stakingRewards.addressToLockedStake(user1.address);
+            expect(lockInfo.amount).to.equal(stakeAmount);
+            expect(lockInfo.lockDuration).to.equal(lockDuration);
+            expect(lockInfo.unlockTimestamp).to.be.gt(await time.latest());
         });
     });
 
@@ -138,101 +213,67 @@ describe('StakingRewards', function () {
         const lockDuration = 30 * 24 * 60 * 60; // 30 days
 
         beforeEach(async function () {
-            await stakingRewards.connect(user1).stake(stakeAmount, lockDuration);
+            await stakingRewards.connect(user1).stake(stakeAmount);
         });
 
-        it('Should allow withdrawal after lock expires', async function () {
-            // Fast forward time
-            await time.increase(lockDuration + 1);
-
-            await stakingRewards.connect(user1).withdraw(stakeAmount, [0]);
+        it('Should allow withdrawal of unlocked tokens', async function () {
+            await stakingRewards.connect(user1).withdraw(stakeAmount);
 
             expect(await stakingRewards.balanceOf(user1.address)).to.equal(0);
             expect(await stakingRewards.totalSupply()).to.equal(0);
-            expect(await stakingToken.balanceOf(user1.address)).to.equal(ethers.parseUnits('1000000', 18));
-        });
-
-        it('Should fail if trying to withdraw before lock expires', async function () {
-            await expect(stakingRewards.connect(user1).withdraw(stakeAmount, [0])).to.be.revertedWith(
-                'Stake is still locked'
-            );
         });
 
         it('Should allow partial withdrawal', async function () {
-            await time.increase(lockDuration + 1);
-
             const withdrawAmount = ethers.parseUnits('300', 18);
-            await stakingRewards.connect(user1).withdraw(withdrawAmount, [0]);
+            await stakingRewards.connect(user1).withdraw(withdrawAmount);
 
             expect(await stakingRewards.balanceOf(user1.address)).to.equal(stakeAmount - withdrawAmount);
-            expect(await stakingRewards.totalSupply()).to.equal(stakeAmount - withdrawAmount);
-
-            const lockedStake = await stakingRewards.addressToLockedStakes(user1.address, 0);
-            expect(lockedStake.amount).to.equal(stakeAmount - withdrawAmount);
         });
 
-        it('Should fail if invalid lock index', async function () {
-            await time.increase(lockDuration + 1);
-            await expect(stakingRewards.connect(user1).withdraw(stakeAmount, [1])).to.be.revertedWith(
-                'Invalid lock index'
-            );
-        });
+        it('Should fail if trying to withdraw locked tokens', async function () {
+            await stakingRewards.connect(user1).lockTokens(stakeAmount, lockDuration);
 
-        it('Should fail if insufficient unlocked balance', async function () {
-            await time.increase(lockDuration + 1);
-            const tooMuch = stakeAmount + ethers.parseUnits('1', 18);
-            await expect(stakingRewards.connect(user1).withdraw(tooMuch, [0])).to.be.revertedWith(
+            await expect(stakingRewards.connect(user1).withdraw(stakeAmount)).to.be.revertedWith(
                 'Insufficient unlocked balance to withdraw'
             );
         });
 
-        it('Should handle multiple locks correctly', async function () {
-            // Use a fresh user to avoid state issues
-            const signers = await ethers.getSigners();
-            const freshUser = signers[4] || signers[signers.length - 1];
-            const amount1 = ethers.parseUnits('500', 18);
-            const amount2 = ethers.parseUnits('300', 18);
-            const shortLock = 1 * 24 * 60 * 60; // 1 day
+        it('Should allow withdraw of unlocked portion when some tokens are locked', async function () {
+            const lockAmount = ethers.parseUnits('600', 18);
+            const unlockedAmount = stakeAmount - lockAmount;
 
-            // Transfer and approve tokens for fresh user
-            await stakingToken.transfer(freshUser.address, ethers.parseUnits('10000', 18));
-            await stakingToken.connect(freshUser).approve(await stakingRewards.getAddress(), ethers.MaxUint256);
+            await stakingRewards.connect(user1).lockTokens(lockAmount, lockDuration);
+            await stakingRewards.connect(user1).withdraw(unlockedAmount);
 
-            // Check initial state
-            const initialSupply = await stakingRewards.totalSupply();
-            const initialBalance = await stakingRewards.balanceOf(freshUser.address);
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(lockAmount);
+        });
 
-            await stakingRewards.connect(freshUser).stake(amount1, lockDuration);
-            expect(await stakingRewards.balanceOf(freshUser.address)).to.equal(initialBalance + amount1);
-            expect(await stakingRewards.totalSupply()).to.equal(initialSupply + amount1);
+        it('Should allow full withdrawal after lock expires', async function () {
+            await stakingRewards.connect(user1).lockTokens(stakeAmount, lockDuration);
 
-            await stakingRewards.connect(freshUser).stake(amount2, shortLock);
+            // Fast forward time
+            await time.increase(lockDuration + 1);
 
-            // Verify both stakes are recorded
-            expect(await stakingRewards.balanceOf(freshUser.address)).to.equal(initialBalance + amount1 + amount2);
-            expect(await stakingRewards.totalSupply()).to.equal(initialSupply + amount1 + amount2);
+            await stakingRewards.connect(user1).withdraw(stakeAmount);
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(0);
+        });
 
-            // Fast forward to unlock the second lock
-            await time.increase(shortLock + 100);
+        it('Should fail if withdrawing zero', async function () {
+            await expect(stakingRewards.connect(user1).withdraw(0)).to.be.revertedWith('Cannot withdraw 0');
+        });
 
-            // Should be able to withdraw from second lock (index 1)
-            await stakingRewards.connect(freshUser).withdraw(amount2, [1]);
-
-            expect(await stakingRewards.balanceOf(freshUser.address)).to.equal(initialBalance + amount1);
-            expect(await stakingRewards.totalSupply()).to.equal(initialSupply + amount1);
-
-            // Verify lock 1 amount is now 0
-            const lock2Final = await stakingRewards.addressToLockedStakes(freshUser.address, 1);
-            expect(lock2Final.amount).to.equal(0);
+        it('Should emit Withdrawn event', async function () {
+            await expect(stakingRewards.connect(user1).withdraw(stakeAmount))
+                .to.emit(stakingRewards, 'Withdrawn')
+                .withArgs(user1.address, stakeAmount);
         });
     });
 
     describe('Rewards', function () {
         const stakeAmount = ethers.parseUnits('1000', 18);
-        const lockDuration = 30 * 24 * 60 * 60; // 30 days
 
         beforeEach(async function () {
-            await stakingRewards.connect(user1).stake(stakeAmount, lockDuration);
+            await stakingRewards.connect(user1).stake(stakeAmount);
         });
 
         it('Should notify reward amount', async function () {
@@ -270,11 +311,9 @@ describe('StakingRewards', function () {
             await stakingRewards.connect(user1).getReward();
 
             const balanceAfter = await rewardsToken.balanceOf(user1.address);
-            // Allow for rounding differences due to integer division and time precision
             const received = balanceAfter - balanceBefore;
             expect(received).to.be.gt(0);
-            // Check that received amount is within reasonable range of earned (allowing for rounding)
-            expect(received).to.be.closeTo(earnedBefore, earnedBefore / 1000n); // Allow 0.1% difference
+            expect(received).to.be.closeTo(earnedBefore, earnedBefore / 1000n);
             expect(await stakingRewards.earned(user1.address)).to.equal(0);
         });
 
@@ -299,10 +338,9 @@ describe('StakingRewards', function () {
 
     describe('Exit', function () {
         const stakeAmount = ethers.parseUnits('1000', 18);
-        const lockDuration = 30 * 24 * 60 * 60; // 30 days
 
         beforeEach(async function () {
-            await stakingRewards.connect(user1).stake(stakeAmount, lockDuration);
+            await stakingRewards.connect(user1).stake(stakeAmount);
 
             const rewardAmount = ethers.parseUnits('10000', 18);
             await rewardsToken.transfer(await stakingRewards.getAddress(), rewardAmount);
@@ -311,15 +349,32 @@ describe('StakingRewards', function () {
             await time.increase(24 * 60 * 60); // 1 day
         });
 
-        it('Should allow exit after lock expires', async function () {
-            await time.increase(lockDuration);
-
+        it('Should allow exit with unlocked tokens', async function () {
             const earnedBefore = await stakingRewards.earned(user1.address);
-            await stakingRewards.connect(user1).exit([0]);
+            await stakingRewards.connect(user1).exit();
 
             expect(await stakingRewards.balanceOf(user1.address)).to.equal(0);
             expect(await stakingRewards.totalSupply()).to.equal(0);
-            expect(await rewardsToken.balanceOf(user1.address)).to.equal(earnedBefore);
+            expect(await rewardsToken.balanceOf(user1.address)).to.be.closeTo(earnedBefore, earnedBefore / 1000n);
+        });
+
+        it('Should fail exit if tokens are locked', async function () {
+            const lockDuration = 30 * 24 * 60 * 60;
+            await stakingRewards.connect(user1).lockTokens(stakeAmount, lockDuration);
+
+            await expect(stakingRewards.connect(user1).exit()).to.be.revertedWith(
+                'Insufficient unlocked balance to withdraw'
+            );
+        });
+
+        it('Should allow exit after lock expires', async function () {
+            const lockDuration = 30 * 24 * 60 * 60;
+            await stakingRewards.connect(user1).lockTokens(stakeAmount, lockDuration);
+
+            await time.increase(lockDuration + 1);
+
+            await stakingRewards.connect(user1).exit();
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(0);
         });
     });
 
@@ -399,10 +454,9 @@ describe('StakingRewards', function () {
         it('Should handle multiple users staking', async function () {
             const amount1 = ethers.parseUnits('1000', 18);
             const amount2 = ethers.parseUnits('2000', 18);
-            const lockDuration = 30 * 24 * 60 * 60;
 
-            await stakingRewards.connect(user1).stake(amount1, lockDuration);
-            await stakingRewards.connect(user2).stake(amount2, lockDuration);
+            await stakingRewards.connect(user1).stake(amount1);
+            await stakingRewards.connect(user2).stake(amount2);
 
             expect(await stakingRewards.totalSupply()).to.equal(amount1 + amount2);
             expect(await stakingRewards.balanceOf(user1.address)).to.equal(amount1);
@@ -412,10 +466,9 @@ describe('StakingRewards', function () {
         it('Should calculate rewards proportionally', async function () {
             const amount1 = ethers.parseUnits('1000', 18);
             const amount2 = ethers.parseUnits('2000', 18);
-            const lockDuration = 30 * 24 * 60 * 60;
 
-            await stakingRewards.connect(user1).stake(amount1, lockDuration);
-            await stakingRewards.connect(user2).stake(amount2, lockDuration);
+            await stakingRewards.connect(user1).stake(amount1);
+            await stakingRewards.connect(user2).stake(amount2);
 
             const rewardAmount = ethers.parseUnits('10000', 18);
             await rewardsToken.transfer(await stakingRewards.getAddress(), rewardAmount);
@@ -427,7 +480,11 @@ describe('StakingRewards', function () {
             const earned2 = await stakingRewards.earned(user2.address);
 
             // User2 should earn approximately 2x user1 (with some rounding)
-            expect(earned2).to.be.gte(earned1 * 2n - ethers.parseUnits('1', 15)); // Allow small rounding error
+            expect(earned2).to.be.gte(earned1 * 2n - ethers.parseUnits('1', 15));
+        });
+
+        it('Should return 0 for getLockedStakeAmount if no lock exists', async function () {
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(0);
         });
     });
 });

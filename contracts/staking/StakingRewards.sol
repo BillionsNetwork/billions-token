@@ -43,28 +43,25 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added pause() and unpause() functions for owner control
  * - Made rewardsDuration configurable via initialize() parameter
  *
- * Time-Locked Staking:
+ * Token Locking (separate from staking):
  * - Added LockedStake struct with amount, lockDuration, and unlockTimestamp fields
- * - Added addressToLockedStakes mapping to track user's locked stakes
- * - Updated stake() to require lockDuration parameter - each stake creates a new lock entry
- * - Updated withdraw() to require lockIndexToWithdraw[] - users specify which locks to withdraw from
- * - Updated exit() to require lockIndexToWithdraw[] parameter
- * - Added duplicate index validation in withdraw() to prevent double-counting exploits
- * - Added partial withdrawal support - can withdraw less than full lock amount
+ * - Added addressToLockedStake mapping to track user's single lock per address
+ * - Added lockTokens() to lock already-staked tokens for a duration
+ * - lockTokens() enforces: cannot reduce locked amount, cannot shorten lock duration
+ * - withdraw() checks locked balance and only allows withdrawing unlocked tokens
+ * - Added getLockedStakeAmount() view to query currently locked amount (returns 0 if expired)
  *
  * Interface:
- * - Moved LockedStake struct to IStakingRewards interface for external accessibility
  * - Updated IStakingRewards interface with all public functions and state variable getters
- * - Added getLockedStakesCount() to interface for querying user lock count
+ * - Added LockedStake struct to interface for external accessibility
  *
  * Security & Input Validation:
  * - Added zero address validation in initialize() for owner, rewardsDistribution, rewardsToken, stakingToken
  * - Added zero value validation for rewardsDuration in initialize() and setRewardsDuration()
  * - Added zero address validation in setRewardsDistribution()
  * - Fixed notifyRewardAmount() balance check when stakingToken == rewardsToken (subtracts _totalSupply)
- * - Updated Staked event to include lockDuration and lockIndex for better off-chain tracking
- * - Added getLockedStakesCount() view function for querying user's lock count
- * - Added comprehensive NatSpec documentation to all functions
+ * - Added TokensLocked event for lock tracking
+ * - Added NatSpec documentation to all functions
  */
 contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardTransientUpgradeable, PausableUpgradeable {
     using SafeERC20 for IERC20;
@@ -88,7 +85,7 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
     
     /* ========== LOCK VARIABLES ========== */
 
-    mapping(address => LockedStake[]) public addressToLockedStakes;
+    mapping(address => LockedStake) public addressToLockedStake;
  
     /* ========== CONSTRUCTOR ========== */
 
@@ -190,77 +187,84 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
     }
 
     /**
-     * @notice Returns the number of locked stakes for a user
+     * @notice Returns the currently locked stake amount for an account 
      * @param account The address to query
-     * @return The number of locked stake entries for the user
+     * @return amount The locked stake amount (0 if no lock or lock expired)
      */
-    function getLockedStakesCount(address account) external view returns (uint256) {
-        return addressToLockedStakes[account].length;
+    function getLockedStakeAmount(address account) public view returns (uint256 amount) {
+        if (addressToLockedStake[account].unlockTimestamp > block.timestamp) {
+            return addressToLockedStake[account].amount;
+        } else {
+            return 0;
+        }
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
     /**
-     * @notice Stakes tokens with a specified lock duration
+     * @notice Stakes tokens
+     * @dev Tokens are staked unlocked by default. Use lockTokens() to lock staked tokens.
      * @param amount The amount of tokens to stake
-     * @param lockDuration The duration in seconds the stake will be locked
      */
-    function stake(uint256 amount, uint256 lockDuration) external nonReentrant whenNotPaused updateReward(msg.sender) {
+    function stake(uint256 amount) external nonReentrant whenNotPaused updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
         _totalSupply = _totalSupply + amount;
         _balances[msg.sender] = _balances[msg.sender] + amount;
-
-        // Add the new locked stake to the user's list of locked stakes
-        uint256 lockIndex = addressToLockedStakes[msg.sender].length;
-        addressToLockedStakes[msg.sender].push(LockedStake({
-            amount: amount,
-            lockDuration: lockDuration,
-            unlockTimestamp: block.timestamp + lockDuration
-        }));
-
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit Staked(msg.sender, amount, lockDuration, lockIndex);
+        emit Staked(msg.sender, amount);
     }
 
     /**
-     * @notice Withdraws staked tokens from specified unlocked locks
-     * @param withdrawalAmount The total amount to withdraw
-     * @param lockIndexToWithdraw Array of lock indices to withdraw from
+     * @notice Locks staked tokens for a specified duration
+     * @dev User must have enough unlocked staked balance to lock, it can use already locked tokens to lock more if the new 
+     * unlock timestamp is greater than the current unlock timestamp
+     * @param amount The amount of staked tokens to lock
+     * @param lockDuration The duration in seconds to lock the tokens
      */
-    function withdraw(uint256 withdrawalAmount, uint256[] calldata lockIndexToWithdraw) public nonReentrant updateReward(msg.sender) {
-        require(withdrawalAmount > 0, "Cannot withdraw 0");
-
-        // Check that the user has enough unlocked tokens to withdraw from locks provided
-        uint256 totalAmount = 0;
-        for (uint256 i = 0; i < lockIndexToWithdraw.length; i++) {
-            uint256 index = lockIndexToWithdraw[i];
-            require(index < addressToLockedStakes[msg.sender].length, "Invalid lock index");
-            
-            LockedStake storage currentLock = addressToLockedStakes[msg.sender][index];
-            require(block.timestamp >= currentLock.unlockTimestamp, "Stake is still locked");
-
-            uint256 currentLockAmount = currentLock.amount;
-            require(currentLockAmount > 0, "Stake lock already withdrawn");
-
-            if(totalAmount + currentLockAmount >= withdrawalAmount) {
-                // Partial amount, note that can be zero
-                uint256 partialAmount = withdrawalAmount - totalAmount; 
-
-                currentLock.amount -= partialAmount;
-                totalAmount += partialAmount;
-                break; // Exit the loop as we've met the withdrawal amount
-            } else {
-                // Full stake withdrawal, prevent double-counting and duplicate indexes
-                currentLock.amount = 0;
-                totalAmount += currentLockAmount;
-            }
+    function lockTokens(uint256 amount, uint256 lockDuration) public whenNotPaused {
+        require(lockDuration > 0, "Lock duration must be greater than 0");
+        
+        // Check that user has enough unlocked staked balance to lock
+        uint256 currentLockedStakeAmount= getLockedStakeAmount(msg.sender);
+        uint256 newUnlockTimestamp = block.timestamp + lockDuration;
+        
+        // Check if user has any locked tokens
+        if(currentLockedStakeAmount != 0) 
+        {
+           require(amount >= currentLockedStakeAmount, "Cannot reduce the amount of locked tokens");
+           require(newUnlockTimestamp >= addressToLockedStake[msg.sender].unlockTimestamp , "Cannot shorten the lock duration");
         }
-        require(totalAmount == withdrawalAmount, "Insufficient unlocked balance to withdraw");
 
-        _totalSupply = _totalSupply - withdrawalAmount;
-        _balances[msg.sender] = _balances[msg.sender] - withdrawalAmount;
-        stakingToken.safeTransfer(msg.sender, withdrawalAmount);
-        emit Withdrawn(msg.sender, withdrawalAmount);
+        // Check that user has enough staked balance to lock
+        require(_balances[msg.sender] >= amount, "Not enough staked balance to lock");
+       
+       // Update the locked tokens
+        addressToLockedStake[msg.sender].lockDuration = lockDuration;
+        addressToLockedStake[msg.sender].unlockTimestamp = newUnlockTimestamp;
+        addressToLockedStake[msg.sender].amount = amount;
+
+        
+        emit TokensLocked(msg.sender, amount, lockDuration);
+    }
+
+    /**
+     * @notice Withdraws unlocked staked tokens
+     * @dev Cannot withdraw tokens that are currently locked
+     * @param amount The amount to withdraw
+     */
+    function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
+        require(amount > 0, "Cannot withdraw 0");
+
+        // Check if there are any locked tokens
+        uint256 lockedStakeAmount = getLockedStakeAmount(msg.sender);
+
+        // Check that the user has enough unlocked balance to withdraw
+        require(_balances[msg.sender] >= lockedStakeAmount + amount , "Insufficient unlocked balance to withdraw");
+
+        _totalSupply = _totalSupply - amount;
+        _balances[msg.sender] = _balances[msg.sender] - amount;
+        stakingToken.safeTransfer(msg.sender, amount);
+        emit Withdrawn(msg.sender, amount);
     }
 
     /**
@@ -276,11 +280,10 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
     }
 
     /**
-     * @notice Withdraws all staked tokens and claims rewards
-     * @param lockIndexToWithdraw Array of lock indices to withdraw from
+     * @notice Withdraws all unlocked staked tokens and claims rewards
      */
-    function exit(uint256[] calldata lockIndexToWithdraw) external {
-        withdraw(_balances[msg.sender], lockIndexToWithdraw);
+    function exit() external {
+        withdraw(_balances[msg.sender] - getLockedStakeAmount(msg.sender));
         getReward();
     }
 
@@ -388,10 +391,11 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
     /* ========== EVENTS ========== */
 
     event RewardAdded(uint256 reward);
-    event Staked(address indexed user, uint256 amount, uint256 lockDuration, uint256 lockIndex);
+    event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 reward);
     event RewardsDurationUpdated(uint256 newDuration);
     event Recovered(address token, uint256 amount);
     event RewardsDistributionUpdated(address indexed newRewardsDistribution);
+    event TokensLocked(address indexed user, uint256 amount, uint256 lockDuration);
 }

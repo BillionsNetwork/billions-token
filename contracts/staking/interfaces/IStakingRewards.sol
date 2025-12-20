@@ -6,10 +6,11 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * @title IStakingRewards
  * @notice Interface for the StakingRewards contract
- * @dev Based on Synthetix StakingRewards with lock duration support
+ * @dev Based on Synthetix StakingRewards with token locking support
  */
 interface IStakingRewards {
     /* ========== STRUCTS ========== */
+    
     struct LockedStake {
         uint256 amount;
         uint256 lockDuration;
@@ -50,19 +51,21 @@ interface IStakingRewards {
 
     function getRewardForDuration() external view returns (uint256);
 
-    function addressToLockedStakes(address account, uint256 index) external view returns (uint256 amount, uint256 lockDuration, uint256 unlockTimestamp);
+    function addressToLockedStake(address account) external view returns (uint256 amount, uint256 lockDuration, uint256 unlockTimestamp);
 
-    function getLockedStakesCount(address account) external view returns (uint256);
+    function getLockedStakeAmount(address account) external view returns (uint256 amount);
 
     /* ========== MUTATIVE FUNCTIONS ========== */
 
-    function stake(uint256 amount, uint256 lockDuration) external;
+    function stake(uint256 amount) external;
 
-    function withdraw(uint256 withdrawalAmount, uint256[] calldata lockIndexToWithdraw) external;
+    function withdraw(uint256 amount) external;
+
+    function lockTokens(uint256 amount, uint256 lockDuration) external;
 
     function getReward() external;
 
-    function exit(uint256[] calldata lockIndexToWithdraw) external;
+    function exit() external;
 
     /* ========== RESTRICTED FUNCTIONS ========== */
 
