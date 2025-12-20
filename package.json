@@ -7,12 +7,17 @@
         "compile": "hardhat compile",
         "test": "hardhat test",
         "coverage": "hardhat coverage",
-        "generate": "hardhat run scripts/generateFromMultisigDeterministic.ts",
-        "deploy:localhost": "hardhat run scripts/deploy.ts --network localhost",
-        "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
-        "deploy:mainnet": "hardhat run scripts/deploy.ts --network mainnet",
-        "verify:sepolia": "hardhat run scripts/verifyDeployment.ts --network sepolia",
-        "verify:mainnet": "hardhat run scripts/verifyDeployment.ts --network mainnet"
+        "token:generate": "hardhat run scripts/deployToken/generateFromMultisigDeterministic.ts",
+        "token:deploy:localhost": "hardhat run scripts/deployToken/deploy.ts --network localhost",
+        "token:deploy:sepolia": "hardhat run scripts/deployToken/deploy.ts --network sepolia",
+        "token:deploy:mainnet": "hardhat run scripts/deployToken/deploy.ts --network mainnet",
+        "token:verify:sepolia": "hardhat run scripts/deployToken/verifyDeployment.ts --network sepolia",
+        "token:verify:mainnet": "hardhat run scripts/deployToken/verifyDeployment.ts --network mainnet",
+        "staking:deploy:localhost": "hardhat run scripts/deployStakingRewards/deploy.ts --network localhost",
+        "staking:deploy:sepolia": "hardhat run scripts/deployStakingRewards/deploy.ts --network sepolia",
+        "staking:deploy:mainnet": "hardhat run scripts/deployStakingRewards/deploy.ts --network mainnet",
+        "staking:verify:sepolia": "hardhat run scripts/deployStakingRewards/verify.ts --network sepolia",
+        "staking:verify:mainnet": "hardhat run scripts/deployStakingRewards/verify.ts --network mainnet"
     },
     "engines": {
         "node": ">=18.0.0"
