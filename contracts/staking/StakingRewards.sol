@@ -46,8 +46,8 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * Token Locking (separate from staking):
  * - Added LockedStake struct with amount, lockDuration, and unlockTimestamp fields
  * - Added addressToLockedStake mapping to track user's single lock per address
- * - Added lockTokens() to lock already-staked tokens for a duration
- * - lockTokens() enforces: cannot reduce locked amount, cannot shorten lock duration
+ * - Added lockStake() to lock already-staked tokens for a duration
+ * - lockStake() enforces: cannot reduce locked amount, cannot shorten lock duration
  * - withdraw() checks locked balance and only allows withdrawing unlocked tokens
  * - Added getLockedStakeAmount() view to query currently locked amount (returns 0 if expired)
  *
@@ -60,7 +60,7 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added zero value validation for rewardsDuration in initialize() and setRewardsDuration()
  * - Added zero address validation in setRewardsDistribution()
  * - Fixed notifyRewardAmount() balance check when stakingToken == rewardsToken (subtracts _totalSupply)
- * - Added TokensLocked event for lock tracking
+ * - Added StakeLocked event for lock tracking
  * - Added NatSpec documentation to all functions
  */
 contract StakingRewards is
@@ -209,10 +209,10 @@ contract StakingRewards is
 
     /**
      * @notice Stakes tokens
-     * @dev Tokens are staked unlocked by default. Use lockTokens() to lock staked tokens.
+     * @dev Tokens are staked unlocked by default. Use lockStake() to lock staked tokens.
      * @param amount The amount of tokens to stake
      */
-    function stake(uint256 amount) external nonReentrant whenNotPaused updateReward(msg.sender) {
+    function stake(uint256 amount) public nonReentrant whenNotPaused updateReward(msg.sender) {
         require(amount > 0, "Cannot stake 0");
         _totalSupply = _totalSupply + amount;
         _balances[msg.sender] = _balances[msg.sender] + amount;
@@ -227,7 +227,7 @@ contract StakingRewards is
      * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
-    function lockTokens(uint256 amount, uint256 lockDuration) public whenNotPaused {
+    function lockStake(uint256 amount, uint256 lockDuration) public whenNotPaused {
         require(lockDuration > 0, "Lock duration must be greater than 0");
 
         // Check that user has enough unlocked staked balance to lock
@@ -254,7 +254,18 @@ contract StakingRewards is
         addressToLockedStake[msg.sender].unlockTimestamp = newUnlockTimestamp;
         addressToLockedStake[msg.sender].amount = amount;
 
-        emit TokensLocked(msg.sender, amount, lockDuration);
+        emit StakeLocked(msg.sender, amount, lockDuration);
+    }
+
+    /**
+     * @notice Stakes tokens and locks them for a specified duration
+     * @dev This function is a convenience function that combines stake() and lockStake()
+     * @param amount The amount of tokens to stake and lock
+     * @param lockDuration The duration in seconds to lock the tokens
+     */
+    function stakeAndLock(uint256 amount, uint256 lockDuration) public {
+        stake(amount);
+        lockStake(amount, lockDuration);
     }
 
     /**
@@ -412,5 +423,5 @@ contract StakingRewards is
     event RewardsDurationUpdated(uint256 newDuration);
     event Recovered(address token, uint256 amount);
     event RewardsDistributionUpdated(address indexed newRewardsDistribution);
-    event TokensLocked(address indexed user, uint256 amount, uint256 lockDuration);
+    event StakeLocked(address indexed user, uint256 amount, uint256 lockDuration);
 }

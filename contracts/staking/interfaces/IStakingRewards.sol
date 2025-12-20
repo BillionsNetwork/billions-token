@@ -10,7 +10,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 interface IStakingRewards {
     /* ========== STRUCTS ========== */
-    
+
     struct LockedStake {
         uint256 amount;
         uint256 lockDuration;
@@ -51,7 +51,9 @@ interface IStakingRewards {
 
     function getRewardForDuration() external view returns (uint256);
 
-    function addressToLockedStake(address account) external view returns (uint256 amount, uint256 lockDuration, uint256 unlockTimestamp);
+    function addressToLockedStake(
+        address account
+    ) external view returns (uint256 amount, uint256 lockDuration, uint256 unlockTimestamp);
 
     function getLockedStakeAmount(address account) external view returns (uint256 amount);
 
@@ -61,7 +63,7 @@ interface IStakingRewards {
 
     function withdraw(uint256 amount) external;
 
-    function lockTokens(uint256 amount, uint256 lockDuration) external;
+    function lockStake(uint256 amount, uint256 lockDuration) external;
 
     function getReward() external;
 
