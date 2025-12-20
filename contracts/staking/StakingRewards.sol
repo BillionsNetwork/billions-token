@@ -4,7 +4,7 @@ pragma solidity 0.8.30;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {ReentrancyGuardTransientUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardTransientUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
 import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
@@ -30,7 +30,7 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * Upgradeable Pattern (OpenZeppelin):
  * - Converted to upgradeable pattern using OpenZeppelin's upgradeable contracts
  * - Replaced Owned with OwnableUpgradeable
- * - Replaced ReentrancyGuard with ReentrancyGuardTransientUpgradeable (EIP-1153 transient storage)
+ * - Replaced ReentrancyGuard with ReentrancyGuardUpgradeable
  * - Replaced custom Pausable with PausableUpgradeable
  * - Replaced constructor with initialize() function
  * - Added constructor with _disableInitializers() for implementation contract safety
@@ -66,7 +66,7 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
 contract StakingRewards is
     IStakingRewards,
     OwnableUpgradeable,
-    ReentrancyGuardTransientUpgradeable,
+    ReentrancyGuardUpgradeable,
     PausableUpgradeable
 {
     using SafeERC20 for IERC20;
@@ -122,7 +122,7 @@ contract StakingRewards is
 
         // Initialize inherited OZ contracts
         __Ownable_init(_owner);
-        __ReentrancyGuardTransient_init();
+        __ReentrancyGuard_init();
         __Pausable_init();
 
         rewardsToken = IERC20(_rewardsToken);
