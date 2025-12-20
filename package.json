@@ -25,6 +25,8 @@
         "dotenv": "^16.4.7",
         "hardhat": "^2.22.18",
         "ts-node": "^10.9.2",
-        "typescript": "^5.7.2"
+        "typescript": "^5.7.2",
+        "prettier": "^3.7.4",
+        "prettier-plugin-solidity": "^2.2.1"
     }
 }

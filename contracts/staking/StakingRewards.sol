@@ -63,7 +63,12 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added TokensLocked event for lock tracking
  * - Added NatSpec documentation to all functions
  */
-contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardTransientUpgradeable, PausableUpgradeable {
+contract StakingRewards is
+    IStakingRewards,
+    OwnableUpgradeable,
+    ReentrancyGuardTransientUpgradeable,
+    PausableUpgradeable
+{
     using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
@@ -82,11 +87,11 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
 
     uint256 private _totalSupply;
     mapping(address => uint256) private _balances;
-    
+
     /* ========== LOCK VARIABLES ========== */
 
     mapping(address => LockedStake) public addressToLockedStake;
- 
+
     /* ========== CONSTRUCTOR ========== */
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -164,9 +169,8 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
             return rewardPerTokenStored;
         }
         return
-            rewardPerTokenStored + (
-                ((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / _totalSupply
-            );
+            rewardPerTokenStored +
+            (((lastTimeRewardApplicable() - lastUpdateTime) * rewardRate * 1e18) / _totalSupply);
     }
 
     /**
@@ -175,7 +179,9 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
      * @return The amount of rewards earned by the account
      */
     function earned(address account) public view returns (uint256) {
-        return ( balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account])) / 1e18 + rewards[account];
+        return
+            (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account])) / 1e18 +
+            rewards[account];
     }
 
     /**
@@ -187,7 +193,7 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
     }
 
     /**
-     * @notice Returns the currently locked stake amount for an account 
+     * @notice Returns the currently locked stake amount for an account
      * @param account The address to query
      * @return amount The locked stake amount (0 if no lock or lock expired)
      */
@@ -216,34 +222,38 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
 
     /**
      * @notice Locks staked tokens for a specified duration
-     * @dev User must have enough unlocked staked balance to lock, it can use already locked tokens to lock more if the new 
+     * @dev User must have enough unlocked staked balance to lock, it can use already locked tokens to lock more if the new
      * unlock timestamp is greater than the current unlock timestamp
      * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
     function lockTokens(uint256 amount, uint256 lockDuration) public whenNotPaused {
         require(lockDuration > 0, "Lock duration must be greater than 0");
-        
+
         // Check that user has enough unlocked staked balance to lock
-        uint256 currentLockedStakeAmount= getLockedStakeAmount(msg.sender);
+        uint256 currentLockedStakeAmount = getLockedStakeAmount(msg.sender);
         uint256 newUnlockTimestamp = block.timestamp + lockDuration;
-        
+
         // Check if user has any locked tokens
-        if(currentLockedStakeAmount != 0) 
-        {
-           require(amount >= currentLockedStakeAmount, "Cannot reduce the amount of locked tokens");
-           require(newUnlockTimestamp >= addressToLockedStake[msg.sender].unlockTimestamp , "Cannot shorten the lock duration");
+        if (currentLockedStakeAmount != 0) {
+            require(
+                amount >= currentLockedStakeAmount,
+                "Cannot reduce the amount of locked tokens"
+            );
+            require(
+                newUnlockTimestamp >= addressToLockedStake[msg.sender].unlockTimestamp,
+                "Cannot shorten the lock duration"
+            );
         }
 
         // Check that user has enough staked balance to lock
         require(_balances[msg.sender] >= amount, "Not enough staked balance to lock");
-       
-       // Update the locked tokens
+
+        // Update the locked tokens
         addressToLockedStake[msg.sender].lockDuration = lockDuration;
         addressToLockedStake[msg.sender].unlockTimestamp = newUnlockTimestamp;
         addressToLockedStake[msg.sender].amount = amount;
 
-        
         emit TokensLocked(msg.sender, amount, lockDuration);
     }
 
@@ -259,7 +269,10 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
         uint256 lockedStakeAmount = getLockedStakeAmount(msg.sender);
 
         // Check that the user has enough unlocked balance to withdraw
-        require(_balances[msg.sender] >= lockedStakeAmount + amount , "Insufficient unlocked balance to withdraw");
+        require(
+            _balances[msg.sender] >= lockedStakeAmount + amount,
+            "Insufficient unlocked balance to withdraw"
+        );
 
         _totalSupply = _totalSupply - amount;
         _balances[msg.sender] = _balances[msg.sender] - amount;
@@ -294,7 +307,9 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
      * @dev Can only be called by the rewards distribution address
      * @param reward The amount of reward tokens to distribute over the reward duration
      */
-    function notifyRewardAmount(uint256 reward) external onlyRewardsDistribution updateReward(address(0)) {
+    function notifyRewardAmount(
+        uint256 reward
+    ) external onlyRewardsDistribution updateReward(address(0)) {
         if (block.timestamp >= periodFinish) {
             rewardRate = reward / rewardsDuration;
         } else {
@@ -369,7 +384,7 @@ contract StakingRewards is IStakingRewards, OwnableUpgradeable, ReentrancyGuardT
      */
     function unpause() external onlyOwner {
         _unpause();
-    }  
+    }
 
     /* ========== MODIFIERS ========== */
 
