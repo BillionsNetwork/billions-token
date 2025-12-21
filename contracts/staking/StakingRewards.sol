@@ -48,7 +48,9 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added addressToLockedStake mapping to track user's single lock per address
  * - Added lockStake() to lock already-staked tokens for a duration
  * - lockStake() enforces: cannot reduce locked amount, cannot shorten lock duration
+ * - Added stakeAndLock() convenience function to stake and lock tokens in a single transaction
  * - withdraw() checks locked balance and only allows withdrawing unlocked tokens
+ * - Modified exit() to withdraw only unlocked tokens (skips withdraw if all tokens are locked)
  * - Added getLockedStakeAmount() view to query currently locked amount (returns 0 if expired)
  *
  * Interface:
@@ -229,6 +231,7 @@ contract StakingRewards is
      */
     function lockStake(uint256 amount, uint256 lockDuration) public whenNotPaused {
         require(lockDuration > 0, "Lock duration must be greater than 0");
+        require(amount > 0, "Amount must be greater than 0");
 
         // Check that user has enough unlocked staked balance to lock
         uint256 currentLockedStakeAmount = getLockedStakeAmount(msg.sender);

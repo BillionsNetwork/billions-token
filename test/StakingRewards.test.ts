@@ -244,6 +244,12 @@ describe('StakingRewards', function () {
             );
         });
 
+        it('Should fail if amount is zero', async function () {
+            await expect(stakingRewards.connect(user1).lockStake(0, lockDuration)).to.be.revertedWith(
+                'Amount must be greater than 0',
+            );
+        });
+
         it('Should fail if not enough staked balance to lock', async function () {
             const tooMuch = stakeAmount + ethers.parseUnits('1', 18);
             await expect(stakingRewards.connect(user1).lockStake(tooMuch, lockDuration)).to.be.revertedWith(
