@@ -224,8 +224,10 @@ contract StakingRewards is
 
     /**
      * @notice Locks staked tokens for a specified duration
-     * @dev User must have enough unlocked staked balance to lock, it can use already locked tokens to lock more if the new
-     * unlock timestamp is greater than the current unlock timestamp
+     * @dev User must have enough staked balance to cover the new lock amount. If a lock already exists,
+     *      the new amount cannot be less than the currently locked amount and the new unlock timestamp
+     *      cannot be earlier than the current unlock timestamp. Increasing the lock amount uses additional
+     *      unlocked staked balance on top of the already locked tokens.
      * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */

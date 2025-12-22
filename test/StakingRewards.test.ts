@@ -867,7 +867,6 @@ describe('StakingRewards', function () {
         it('Should cover withdraw partial unlocked amount when some locked', async function () {
             // Stake more tokens
             await stakingRewards.connect(user1).stake(stakeAmount);
-            const totalStaked = stakeAmount * 2n;
 
             // Lock half
             const lockDuration = 30 * 24 * 60 * 60;
@@ -994,8 +993,6 @@ describe('StakingRewards', function () {
             await stakingRewards.connect(rewardsDistributor).notifyRewardAmount(rewardAmount);
 
             await time.increase(24 * 60 * 60);
-
-            const earnedBefore = await stakingRewards.earned(user1.address);
 
             // stake triggers updateReward with msg.sender (not zero)
             await stakingRewards.connect(user1).stake(ethers.parseUnits('1', 18));
