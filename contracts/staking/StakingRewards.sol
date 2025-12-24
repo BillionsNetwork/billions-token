@@ -42,6 +42,11 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * Admin Functions:
  * - Added pause() and unpause() functions for owner control
  * - Made rewardsDuration configurable via initialize() parameter
+ * - Refactored setRewardsDistribution() and setRewardsDuration() to use internal functions
+ * - Created _setRewardsDistribution() internal function for code reuse
+ * - Created _setRewardsDuration() internal function for code reuse
+ * - Both internal functions are called by initialize() and their respective public functions
+ * - _setRewardsDuration() includes periodFinish check to prevent changing duration during active reward periods
  *
  * Token Locking (separate from staking):
  * - Added LockedStake struct with amount, lockDuration, and unlockTimestamp fields
@@ -64,6 +69,8 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Fixed notifyRewardAmount() balance check when stakingToken == rewardsToken (subtracts _totalSupply)
  * - Added StakeLocked event for lock tracking
  * - Added NatSpec documentation to all functions
+ * - Consolidated validation logic into internal functions to reduce code duplication
+ * - Removed duplicate validation checks from initialize() (now handled by internal functions)
  */
 contract StakingRewards is
     IStakingRewards,
@@ -117,10 +124,8 @@ contract StakingRewards is
         uint256 _rewardsDuration
     ) external initializer {
         require(_owner != address(0), "Owner cannot be zero address");
-        require(_rewardsDistribution != address(0), "RewardsDistribution cannot be zero address");
         require(_rewardsToken != address(0), "RewardsToken cannot be zero address");
         require(_stakingToken != address(0), "StakingToken cannot be zero address");
-        require(_rewardsDuration > 0, "RewardsDuration must be greater than 0");
 
         // Initialize inherited OZ contracts
         __Ownable_init(_owner);
@@ -129,10 +134,9 @@ contract StakingRewards is
 
         rewardsToken = IERC20(_rewardsToken);
         stakingToken = IERC20(_stakingToken);
-        rewardsDistribution = _rewardsDistribution;
-        rewardsDuration = _rewardsDuration;
 
-        emit RewardsDistributionUpdated(_rewardsDistribution);
+        _setRewardsDistribution(_rewardsDistribution);
+        _setRewardsDuration(_rewardsDuration);
     }
 
     /* ========== VIEWS ========== */
@@ -355,9 +359,7 @@ contract StakingRewards is
      * @param _rewardsDistribution The address authorized to call notifyRewardAmount
      */
     function setRewardsDistribution(address _rewardsDistribution) external onlyOwner {
-        require(_rewardsDistribution != address(0), "RewardsDistribution cannot be zero address");
-        rewardsDistribution = _rewardsDistribution;
-        emit RewardsDistributionUpdated(_rewardsDistribution);
+        _setRewardsDistribution(_rewardsDistribution);
     }
 
     /**
@@ -377,13 +379,7 @@ contract StakingRewards is
      * @param _rewardsDuration The duration in seconds for reward distribution
      */
     function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
-        require(_rewardsDuration > 0, "RewardsDuration must be greater than 0");
-        require(
-            block.timestamp > periodFinish,
-            "Previous rewards period must be complete before changing the duration for the new period"
-        );
-        rewardsDuration = _rewardsDuration;
-        emit RewardsDurationUpdated(rewardsDuration);
+        _setRewardsDuration(_rewardsDuration);
     }
 
     /**
@@ -400,6 +396,32 @@ contract StakingRewards is
      */
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /* ========== INTERNAL FUNCTIONS ========== */
+
+    /**
+     * @notice Internal function to set the rewards distribution address
+     * @param _rewardsDistribution The address authorized to call notifyRewardAmount
+     */
+    function _setRewardsDistribution(address _rewardsDistribution) internal {
+        require(_rewardsDistribution != address(0), "RewardsDistribution cannot be zero address");
+        rewardsDistribution = _rewardsDistribution;
+        emit RewardsDistributionUpdated(_rewardsDistribution);
+    }
+
+    /**
+     * @notice Internal function to set the rewards duration
+     * @param _rewardsDuration The duration in seconds for reward distribution
+     */
+    function _setRewardsDuration(uint256 _rewardsDuration) internal {
+        require(_rewardsDuration > 0, "RewardsDuration must be greater than 0");
+        require(
+            block.timestamp > periodFinish,
+            "Previous rewards period must be complete before changing the duration for the new period"
+        );
+        rewardsDuration = _rewardsDuration;
+        emit RewardsDurationUpdated(_rewardsDuration);
     }
 
     /* ========== MODIFIERS ========== */
