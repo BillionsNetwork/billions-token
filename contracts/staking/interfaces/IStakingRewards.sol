@@ -12,9 +12,9 @@ interface IStakingRewards {
     /* ========== STRUCTS ========== */
 
     struct LockedStake {
-        uint256 amount;
-        uint256 lockDuration;
-        uint256 unlockTimestamp;
+        uint128 amount;
+        uint64 lockDuration;
+        uint64 unlockTimestamp;
     }
 
     /* ========== VIEWS ========== */
@@ -53,7 +53,7 @@ interface IStakingRewards {
 
     function addressToLockedStake(
         address account
-    ) external view returns (uint256 amount, uint256 lockDuration, uint256 unlockTimestamp);
+    ) external view returns (uint128 amount, uint64 lockDuration, uint64 unlockTimestamp);
 
     function getLockedStakeAmount(address account) external view returns (uint256 amount);
 
@@ -63,9 +63,9 @@ interface IStakingRewards {
 
     function withdraw(uint256 amount) external;
 
-    function lockStake(uint256 amount, uint256 lockDuration) external;
+    function lockStake(uint256 amount, uint64 lockDuration) external;
 
-    function stakeAndLock(uint256 amount, uint256 lockDuration) external;
+    function stakeAndLock(uint256 amount, uint64 lockDuration) external;
 
     function getReward() external;
 

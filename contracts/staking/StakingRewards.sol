@@ -49,7 +49,7 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - _setRewardsDuration() includes periodFinish check to prevent changing duration during active reward periods
  *
  * Token Locking (separate from staking):
- * - Added LockedStake struct with amount, lockDuration, and unlockTimestamp fields
+ * - Added LockedStake struct with uint128 amount, uint64 lockDuration, uint64 unlockTimestamp (packed in 1 slot)
  * - Added addressToLockedStake mapping to track user's single lock per address
  * - Added lockStake() to lock already-staked tokens for a duration
  * - lockStake() enforces: cannot reduce locked amount, cannot shorten lock duration
@@ -235,13 +235,14 @@ contract StakingRewards is
      * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
-    function lockStake(uint256 amount, uint256 lockDuration) public whenNotPaused {
+    function lockStake(uint256 amount, uint64 lockDuration) public whenNotPaused {
         require(lockDuration > 0, "Lock duration must be greater than 0");
         require(amount > 0, "Amount must be greater than 0");
+        require(amount <= type(uint128).max, "Amount exceeds max uint128");
 
         // Check that user has enough unlocked staked balance to lock
         uint256 currentLockedStakeAmount = getLockedStakeAmount(msg.sender);
-        uint256 newUnlockTimestamp = block.timestamp + lockDuration;
+        uint64 newUnlockTimestamp = uint64(block.timestamp) + lockDuration;
 
         // Check if user has any locked tokens
         if (currentLockedStakeAmount != 0) {
@@ -259,9 +260,11 @@ contract StakingRewards is
         require(_balances[msg.sender] >= amount, "Not enough staked balance to lock");
 
         // Update the locked tokens
-        addressToLockedStake[msg.sender].lockDuration = lockDuration;
-        addressToLockedStake[msg.sender].unlockTimestamp = newUnlockTimestamp;
-        addressToLockedStake[msg.sender].amount = amount;
+        addressToLockedStake[msg.sender] = LockedStake(
+            uint128(amount),
+            lockDuration,
+            newUnlockTimestamp
+        );
 
         emit StakeLocked(msg.sender, amount, lockDuration);
     }
@@ -272,7 +275,7 @@ contract StakingRewards is
      * @param amount The amount of tokens to stake and lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
-    function stakeAndLock(uint256 amount, uint256 lockDuration) public {
+    function stakeAndLock(uint256 amount, uint64 lockDuration) public {
         stake(amount);
         lockStake(amount, lockDuration);
     }
@@ -450,5 +453,5 @@ contract StakingRewards is
     event RewardsDurationUpdated(uint256 newDuration);
     event Recovered(address token, uint256 amount);
     event RewardsDistributionUpdated(address indexed newRewardsDistribution);
-    event StakeLocked(address indexed user, uint256 amount, uint256 lockDuration);
+    event StakeLocked(address indexed user, uint256 amount, uint64 lockDuration);
 }
