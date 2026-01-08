@@ -65,7 +65,11 @@ interface IStakingRewards {
 
     function lockStake(uint256 amount, uint256 lockDuration) external;
 
-    function stakeAndLock(uint256 amount, uint256 lockDuration) external;
+    function stakeAndLock(
+        uint256 amountToStake,
+        uint256 amountToLock,
+        uint256 lockDuration
+    ) external;
 
     function getReward() external;
 

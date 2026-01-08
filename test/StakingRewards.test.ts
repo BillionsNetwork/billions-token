@@ -652,13 +652,40 @@ describe('StakingRewards', function () {
         });
 
         it('Should allow stakeAndLock in one call', async function () {
-            const amount = ethers.parseUnits('500', 18);
+            const amountToStake = ethers.parseUnits('500', 18);
+            const amountToLock = ethers.parseUnits('300', 18);
             const lockDuration = 7 * 24 * 60 * 60; // 7 days
 
-            await stakingRewards.connect(user1).stakeAndLock(amount, lockDuration);
+            await stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration);
 
-            expect(await stakingRewards.balanceOf(user1.address)).to.equal(amount);
-            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amount);
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(amountToStake);
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amountToLock);
+        });
+
+        it('Should allow stakeAndLock with different stake and lock amounts', async function () {
+            const amountToStake = ethers.parseUnits('1000', 18);
+            const amountToLock = ethers.parseUnits('500', 18);
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration);
+
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(amountToStake);
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amountToLock);
+
+            // Should be able to withdraw unlocked portion
+            const unlockedAmount = amountToStake - amountToLock;
+            await stakingRewards.connect(user1).withdraw(unlockedAmount);
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(amountToLock);
+        });
+
+        it('Should fail stakeAndLock if amountToLock exceeds amountToStake', async function () {
+            const amountToStake = ethers.parseUnits('500', 18);
+            const amountToLock = ethers.parseUnits('600', 18); // More than staked
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await expect(
+                stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration),
+            ).to.be.revertedWith('Not enough staked balance to lock');
         });
 
         it('Should add leftover rewards when notifying during active period', async function () {
