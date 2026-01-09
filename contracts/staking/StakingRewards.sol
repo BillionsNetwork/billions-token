@@ -369,7 +369,12 @@ contract StakingRewards is
      * @param tokenAmount The amount of tokens to recover
      */
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
-        require(tokenAddress != address(stakingToken), "Cannot withdraw the staking token");
+        if (address(rewardsToken) != address(stakingToken)) {
+            require(tokenAddress != address(stakingToken), "Cannot withdraw the staking token");
+        } else {
+            uint256 availableRewardsBalance = rewardsToken.balanceOf(address(this)) - _totalSupply;
+            require(tokenAmount <= availableRewardsBalance, "Cannot withdraw more rewards than available");
+        }
         IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }

@@ -765,6 +765,21 @@ describe('StakingRewards', function () {
 
             await sameTokenStaking.connect(user1).getReward();
         });
+
+        it('Should fail recoverERC20 with amount more than available rewards', async function () {
+            await expect(
+                sameTokenStaking.connect(owner).recoverERC20(await sameToken.getAddress(), 1),
+            ).to.be.revertedWith('Cannot withdraw more rewards than available');
+        });        
+
+        it('recoverERC20: should succeed with amount less than available rewards', async function () {
+            // Send some rewards token to contract
+            const amount = ethers.parseUnits('100', 18);
+            await sameToken.transfer(await sameTokenStaking.getAddress(), amount);
+
+            // Should recover rewards token (not staking token)
+            await sameTokenStaking.connect(owner).recoverERC20(await sameToken.getAddress(), amount);
+        });
     });
 
     describe('Branch Coverage - Additional Cases', function () {
