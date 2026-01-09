@@ -54,6 +54,7 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added lockStake() to lock already-staked tokens for a duration
  * - lockStake() enforces: cannot reduce locked amount, cannot shorten lock duration
  * - Added stakeAndLock() convenience function to stake and lock tokens in a single transaction
+ *   (allows staking one amount and locking a different amount)
  * - withdraw() checks locked balance and only allows withdrawing unlocked tokens
  * - Modified exit() to withdraw only unlocked tokens (skips withdraw if all tokens are locked)
  * - Added getLockedStakeAmount() view to query currently locked amount (returns 0 if expired)
@@ -267,14 +268,19 @@ contract StakingRewards is
     }
 
     /**
-     * @notice Stakes tokens and locks them for a specified duration
+     * @notice Stakes tokens and locks a portion of them for a specified duration
      * @dev This function is a convenience function that combines stake() and lockStake()
-     * @param amount The amount of tokens to stake and lock
+     * @param amountToStake The amount of tokens to stake
+     * @param amountToLock The amount of staked tokens to lock (must be <= amountToStake)
      * @param lockDuration The duration in seconds to lock the tokens
      */
-    function stakeAndLock(uint256 amount, uint256 lockDuration) public {
-        stake(amount);
-        lockStake(amount, lockDuration);
+    function stakeAndLock(
+        uint256 amountToStake,
+        uint256 amountToLock,
+        uint256 lockDuration
+    ) public {
+        stake(amountToStake);
+        lockStake(amountToLock, lockDuration);
     }
 
     /**
