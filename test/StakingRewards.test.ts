@@ -770,7 +770,7 @@ describe('StakingRewards', function () {
             await expect(
                 sameTokenStaking.connect(owner).recoverERC20(await sameToken.getAddress(), 1),
             ).to.be.revertedWith('Cannot withdraw more rewards than available');
-        });        
+        });
 
         it('recoverERC20: should succeed with amount less than available rewards', async function () {
             // Send some rewards token to contract
