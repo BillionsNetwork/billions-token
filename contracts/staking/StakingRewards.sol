@@ -373,15 +373,9 @@ contract StakingRewards is
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
         require(tokenAmount > 0, "Cannot recover 0 tokens");
         if (tokenAddress == address(stakingToken)) {
-            require(
-                address(rewardsToken) == address(stakingToken),
-                "Cannot withdraw the staking token"
-            );
-            uint256 availableRewardsBalance = rewardsToken.balanceOf(address(this)) - _totalSupply;
-            require(
-                tokenAmount <= availableRewardsBalance,
-                "Cannot withdraw more rewards than available"
-            );
+            // Protect user staked tokens
+            uint256 nonStakedBalance = stakingToken.balanceOf(address(this)) - _totalSupply;
+            require(tokenAmount <= nonStakedBalance, "Cannot withdraw more rewards than available");
         }
         IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
