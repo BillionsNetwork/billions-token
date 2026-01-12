@@ -3,7 +3,7 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 
@@ -75,7 +75,7 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  */
 contract StakingRewards is
     IStakingRewards,
-    OwnableUpgradeable,
+    Ownable2StepUpgradeable,
     ReentrancyGuardUpgradeable,
     PausableUpgradeable
 {
@@ -187,7 +187,8 @@ contract StakingRewards is
      */
     function earned(address account) public view returns (uint256) {
         return
-            (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account])) / 1e18 +
+            (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account])) /
+            1e18 +
             rewards[account];
     }
 
@@ -370,12 +371,18 @@ contract StakingRewards is
 
     /**
      * @notice Recovers ERC20 tokens accidentally sent to the contract
-     * @dev Cannot recover staking tokens to protect user funds
+     * @dev Cannot recover staking tokens to protect user funds,
+     * but it does allow to recover rewards tokens when staking and rewards tokens are the same.
      * @param tokenAddress The address of the token to recover
      * @param tokenAmount The amount of tokens to recover
      */
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
-        require(tokenAddress != address(stakingToken), "Cannot withdraw the staking token");
+        require(tokenAmount > 0, "Cannot recover 0 tokens");
+        if (tokenAddress == address(stakingToken)) {
+            // Protect user staked tokens
+            uint256 nonStakedBalance = stakingToken.balanceOf(address(this)) - _totalSupply;
+            require(tokenAmount <= nonStakedBalance, "Cannot withdraw more rewards than available");
+        }
         IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }

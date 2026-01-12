@@ -525,7 +525,7 @@ describe('StakingRewards', function () {
         it('Should fail to recover staking token', async function () {
             await expect(
                 stakingRewards.connect(owner).recoverERC20(await stakingToken.getAddress(), ethers.parseUnits('1', 18)),
-            ).to.be.revertedWith('Cannot withdraw the staking token');
+            ).to.be.revertedWith('Cannot withdraw more rewards than available');
         });
 
         it('Should allow owner to set rewards duration', async function () {
@@ -804,6 +804,21 @@ describe('StakingRewards', function () {
 
             await sameTokenStaking.connect(user1).getReward();
         });
+
+        it('Should fail recoverERC20 with amount more than available rewards', async function () {
+            await expect(
+                sameTokenStaking.connect(owner).recoverERC20(await sameToken.getAddress(), 1),
+            ).to.be.revertedWith('Cannot withdraw more rewards than available');
+        });
+
+        it('recoverERC20: should succeed with amount less than available rewards', async function () {
+            // Send some rewards token to contract
+            const amount = ethers.parseUnits('100', 18);
+            await sameToken.transfer(await sameTokenStaking.getAddress(), amount);
+
+            // Should recover rewards token (not staking token)
+            await sameTokenStaking.connect(owner).recoverERC20(await sameToken.getAddress(), amount);
+        });
     });
 
     describe('Branch Coverage - Additional Cases', function () {
@@ -921,7 +936,7 @@ describe('StakingRewards', function () {
             // where we try to recover the staking token
             await expect(
                 stakingRewards.connect(owner).recoverERC20(await stakingToken.getAddress(), 1),
-            ).to.be.revertedWith('Cannot withdraw the staking token');
+            ).to.be.revertedWith('Cannot withdraw more rewards than available');
         });
 
         it('Should cover balanceOf view function', async function () {
@@ -1223,10 +1238,17 @@ describe('StakingRewards', function () {
         });
 
         // Cannot recover staking token - failure path
+        it('recoverERC20: should fail with 0 token amount', async function () {
+            await expect(
+                stakingRewards.connect(owner).recoverERC20(await stakingRewards.getAddress(), 0),
+            ).to.be.revertedWith('Cannot recover 0 tokens');
+        });
+
+        // Cannot recover staking token - failure path
         it('recoverERC20: should fail with staking token', async function () {
             await expect(
                 stakingRewards.connect(owner).recoverERC20(await stakingToken.getAddress(), 1),
-            ).to.be.revertedWith('Cannot withdraw the staking token');
+            ).to.be.revertedWith('Cannot withdraw more rewards than available');
         });
 
         // Not enough staked balance to lock - failure path
