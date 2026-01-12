@@ -1199,6 +1199,13 @@ describe('StakingRewards', function () {
         });
 
         // Cannot recover staking token - failure path
+        it('recoverERC20: should fail with 0 token amount', async function () {
+            await expect(
+                stakingRewards.connect(owner).recoverERC20(await stakingRewards.getAddress(), 0),
+            ).to.be.revertedWith('Cannot recover 0 tokens');
+        });
+
+        // Cannot recover staking token - failure path
         it('recoverERC20: should fail with staking token', async function () {
             await expect(
                 stakingRewards.connect(owner).recoverERC20(await stakingToken.getAddress(), 1),

@@ -186,7 +186,8 @@ contract StakingRewards is
      */
     function earned(address account) public view returns (uint256) {
         return
-            (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account])) / 1e18 +
+            (balanceOf(account) * (rewardPerToken() - userRewardPerTokenPaid[account])) /
+            1e18 +
             rewards[account];
     }
 
@@ -364,15 +365,23 @@ contract StakingRewards is
 
     /**
      * @notice Recovers ERC20 tokens accidentally sent to the contract
-     * @dev Cannot recover staking tokens to protect user funds
+     * @dev Cannot recover staking tokens to protect user funds,
+     * but it does allow to recover rewards tokens when staking and rewards tokens are the same.
      * @param tokenAddress The address of the token to recover
      * @param tokenAmount The amount of tokens to recover
      */
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
+        require(tokenAmount > 0, "Cannot recover 0 tokens");
         if (tokenAddress == address(stakingToken)) {
-            require(address(rewardsToken) == address(stakingToken), "Cannot withdraw the staking token");
+            require(
+                address(rewardsToken) == address(stakingToken),
+                "Cannot withdraw the staking token"
+            );
             uint256 availableRewardsBalance = rewardsToken.balanceOf(address(this)) - _totalSupply;
-            require(tokenAmount <= availableRewardsBalance, "Cannot withdraw more rewards than available");
+            require(
+                tokenAmount <= availableRewardsBalance,
+                "Cannot withdraw more rewards than available"
+            );
         }
         IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
