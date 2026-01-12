@@ -381,7 +381,7 @@ contract StakingRewards is
         if (tokenAddress == address(stakingToken)) {
             // Protect user staked tokens
             uint256 nonStakedBalance = stakingToken.balanceOf(address(this)) - _totalSupply;
-            require(tokenAmount <= nonStakedBalance, "Cannot withdraw more rewards than available");
+            require(tokenAmount <= nonStakedBalance, "Cannot withdraw user staked tokens");
         }
         IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);

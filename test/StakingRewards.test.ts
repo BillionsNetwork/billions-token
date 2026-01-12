@@ -525,7 +525,7 @@ describe('StakingRewards', function () {
         it('Should fail to recover staking token', async function () {
             await expect(
                 stakingRewards.connect(owner).recoverERC20(await stakingToken.getAddress(), ethers.parseUnits('1', 18)),
-            ).to.be.revertedWith('Cannot withdraw more rewards than available');
+            ).to.be.revertedWith('Cannot withdraw user staked tokens');
         });
 
         it('Should allow owner to set rewards duration', async function () {
@@ -808,7 +808,7 @@ describe('StakingRewards', function () {
         it('Should fail recoverERC20 with amount more than available rewards', async function () {
             await expect(
                 sameTokenStaking.connect(owner).recoverERC20(await sameToken.getAddress(), 1),
-            ).to.be.revertedWith('Cannot withdraw more rewards than available');
+            ).to.be.revertedWith('Cannot withdraw user staked tokens');
         });
 
         it('recoverERC20: should succeed with amount less than available rewards', async function () {
@@ -936,7 +936,7 @@ describe('StakingRewards', function () {
             // where we try to recover the staking token
             await expect(
                 stakingRewards.connect(owner).recoverERC20(await stakingToken.getAddress(), 1),
-            ).to.be.revertedWith('Cannot withdraw more rewards than available');
+            ).to.be.revertedWith('Cannot withdraw user staked tokens');
         });
 
         it('Should cover balanceOf view function', async function () {
@@ -1248,7 +1248,7 @@ describe('StakingRewards', function () {
         it('recoverERC20: should fail with staking token', async function () {
             await expect(
                 stakingRewards.connect(owner).recoverERC20(await stakingToken.getAddress(), 1),
-            ).to.be.revertedWith('Cannot withdraw more rewards than available');
+            ).to.be.revertedWith('Cannot withdraw user staked tokens');
         });
 
         // Not enough staked balance to lock - failure path
