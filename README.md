@@ -171,3 +171,7 @@ All upgrades go through the Timelock (2-day minimum delay):
 - Multisig controls day-to-day operations
 - Reentrancy protection on all mutative functions
 - Pausable staking in case of emergency
+
+## Security Audits
+1. [HALBORN](https://www.halborn.com/audits) has performed a security audit of BillionsNetworkToken smart contract and compiled report on Dec 5, 2025: [billions-token-7661d8](https://www.halborn.com/portal/reports/billions-token-7661d8).  
+2. [HALBORN](https://www.halborn.com/audits) has performed a security audit of BillionsNetworkToken smart contract and compiled report on Jan 5, 2026: [staking-rewards-0b472f](https://www.halborn.com/portal/reports/staking-rewards-0b472f).
