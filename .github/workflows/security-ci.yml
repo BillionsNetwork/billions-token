@@ -23,9 +23,9 @@ jobs:
             - name: Get node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: '24.x'
+                  node-version: '20.x'
                   cache: 'npm'
             - run: npm ci
             - run: npx hardhat compile
             - name: solidity-coverage
-              run: npx hardhat test --coverage
+              run: npx hardhat coverage
