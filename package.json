@@ -29,9 +29,11 @@
         "@types/node": "^22.10.2",
         "dotenv": "^16.4.7",
         "hardhat": "^2.22.18",
+        "prettier": "^3.7.4",
+        "prettier-plugin-solidity": "^1.1.1",
         "ts-node": "^10.9.2",
         "typescript": "^5.7.2",
-        "prettier": "^3.7.4",
-        "prettier-plugin-solidity": "^2.2.1"
+        "solhint": "4.1.1",
+        "solhint-plugin-prettier": "^0.1.0"
     }
 }
