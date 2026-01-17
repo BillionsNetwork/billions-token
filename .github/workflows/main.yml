@@ -1,0 +1,19 @@
+name: Tests
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [ 20 ]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    - name: Use Nodejs
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node }} # https://github.com/actions/setup-node#matrix-testing
+    - name: Install node_modules
+      run: npm install
+    - name: Test contracts
+      run: npm run test
