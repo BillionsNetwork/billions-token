@@ -74,11 +74,9 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Removed duplicate validation checks from initialize() (now handled by internal functions)
  */
 // keccak256(abi.encode(uint256(keccak256("billions.storage.StakingRewards")) -1 )) & ~bytes32(uint256(0xff));
-contract StakingRewards layout at 0xd1679a7c7d3c3947e91675088db07315d80e787890d056336cd97cbdbd602800 is
-    IStakingRewards,
-    Ownable2StepUpgradeable,
-    ReentrancyGuardUpgradeable,
-    PausableUpgradeable
+contract StakingRewards
+    is IStakingRewards, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable
+    layout at 0xd1679a7c7d3c3947e91675088db07315d80e787890d056336cd97cbdbd602800
 {
     using SafeERC20 for IERC20;
 
@@ -270,6 +268,7 @@ contract StakingRewards layout at 0xd1679a7c7d3c3947e91675088db07315d80e787890d0
     /**
      * @notice Stakes tokens and locks a portion of them for a specified duration
      * @dev This function is a convenience function that combines stake() and lockStake()
+     * @param account The address on whose behalf to stake and lock
      * @param amountToStake The amount of tokens to stake
      * @param lockDuration The duration in seconds to lock the tokens
      */
@@ -544,7 +543,10 @@ contract StakingRewards layout at 0xd1679a7c7d3c3947e91675088db07315d80e787890d0
     }
 
     modifier onlyAllowedStakerOnBehalf() {
-        require(_isAllowedStakerOnBehalf[msg.sender], "Staking on behalf is not allowed for this address");
+        require(
+            _isAllowedStakerOnBehalf[msg.sender],
+            "Staking on behalf is not allowed for this address"
+        );
         _;
     }
 
