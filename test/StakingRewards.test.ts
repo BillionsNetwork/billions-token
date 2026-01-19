@@ -700,6 +700,50 @@ describe('StakingRewards', function () {
                 .be.reverted;
         });
 
+        it('Should fail stakeAndLockOnBehalf with unallowed staker on behalf', async function () {
+            const amountToStake = ethers.parseUnits('500', 18);
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await expect(
+                stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStake, lockDuration),
+            ).to.be.revertedWith('Staking on behalf is not allowed for this address');
+        });
+
+        it('Should allow stakeAndLockOnBehalf in one call without user previous stake', async function () {
+            const amountToStake = ethers.parseUnits('500', 18);
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+            const user2BalanceBefore = await stakingToken.balanceOf(user2.address);
+
+            await stakingRewards.connect(owner).addStakerOnBehalf(user2.address);
+
+            await stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStake, lockDuration);
+
+            const user2BalanceAfter = await stakingToken.balanceOf(user2.address);
+
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(amountToStake);
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amountToStake);
+            expect(user2BalanceBefore - user2BalanceAfter).to.equal(amountToStake);
+        });
+
+        it('Should allow stakeAndLockOnBehalf in one call with user previous stake', async function () {
+            const amountToStake = ethers.parseUnits('500', 18);
+            const amountToLock = ethers.parseUnits('300', 18);
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+            const user2BalanceBefore = await stakingToken.balanceOf(user2.address);
+
+            await stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration);
+
+            await stakingRewards.connect(owner).addStakerOnBehalf(user2.address);
+
+            await stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStake, lockDuration);
+
+            const user2BalanceAfter = await stakingToken.balanceOf(user2.address);
+
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(amountToStake * 2n);
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amountToLock + amountToStake);
+            expect(user2BalanceBefore - user2BalanceAfter).to.equal(amountToStake);
+        });
+
         it('Should add leftover rewards when notifying during active period', async function () {
             const stakeAmount = ethers.parseUnits('1000', 18);
             await stakingRewards.connect(user1).stake(stakeAmount);

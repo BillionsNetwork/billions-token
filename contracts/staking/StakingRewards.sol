@@ -73,7 +73,8 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Consolidated validation logic into internal functions to reduce code duplication
  * - Removed duplicate validation checks from initialize() (now handled by internal functions)
  */
-contract StakingRewards is
+// keccak256(abi.encode(uint256(keccak256("billions.storage.StakingRewards")) -1 )) & ~bytes32(uint256(0xff));
+contract StakingRewards layout at 0xd1679a7c7d3c3947e91675088db07315d80e787890d056336cd97cbdbd602800 is
     IStakingRewards,
     Ownable2StepUpgradeable,
     ReentrancyGuardUpgradeable,
@@ -101,6 +102,9 @@ contract StakingRewards is
     /* ========== LOCK VARIABLES ========== */
 
     mapping(address => LockedStake) public addressToLockedStake;
+
+    address[] public stakersOnBehalf;
+    mapping(address => bool) private _isAllowedStakerOnBehalf;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -220,12 +224,18 @@ contract StakingRewards is
      * @dev Tokens are staked unlocked by default. Use lockStake() to lock staked tokens.
      * @param amount The amount of tokens to stake
      */
-    function stake(uint256 amount) public nonReentrant whenNotPaused updateReward(msg.sender) {
-        require(amount > 0, "Cannot stake 0");
-        _totalSupply = _totalSupply + amount;
-        _balances[msg.sender] = _balances[msg.sender] + amount;
-        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit Staked(msg.sender, amount);
+    function stake(uint256 amount) public {
+        _stake(msg.sender, amount);
+    }
+
+    /**
+     * @notice Stakes tokens
+     * @dev Tokens are staked unlocked by default. Use lockStake() to lock staked tokens.
+     * @param amount The amount of tokens to stake
+     * @param account The address on whose behalf to stake
+     */
+    function stakeOnBehalf(uint256 amount, address account) public onlyAllowedStakerOnBehalf {
+        _stake(account, amount);
     }
 
     /**
@@ -237,35 +247,8 @@ contract StakingRewards is
      * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
-    function lockStake(uint256 amount, uint256 lockDuration) public whenNotPaused {
-        require(lockDuration > 0, "Lock duration must be greater than 0");
-        require(amount > 0, "Amount must be greater than 0");
-
-        // Check that user has enough unlocked staked balance to lock
-        uint256 currentLockedStakeAmount = getLockedStakeAmount(msg.sender);
-        uint256 newUnlockTimestamp = block.timestamp + lockDuration;
-
-        // Check if user has any locked tokens
-        if (currentLockedStakeAmount != 0) {
-            require(
-                amount >= currentLockedStakeAmount,
-                "Cannot reduce the amount of locked tokens"
-            );
-            require(
-                newUnlockTimestamp >= addressToLockedStake[msg.sender].unlockTimestamp,
-                "Cannot shorten the lock duration"
-            );
-        }
-
-        // Check that user has enough staked balance to lock
-        require(_balances[msg.sender] >= amount, "Not enough staked balance to lock");
-
-        // Update the locked tokens
-        addressToLockedStake[msg.sender].lockDuration = lockDuration;
-        addressToLockedStake[msg.sender].unlockTimestamp = newUnlockTimestamp;
-        addressToLockedStake[msg.sender].amount = amount;
-
-        emit StakeLocked(msg.sender, amount, lockDuration);
+    function lockStake(uint256 amount, uint256 lockDuration) public {
+        _lockStake(msg.sender, amount, lockDuration);
     }
 
     /**
@@ -280,8 +263,25 @@ contract StakingRewards is
         uint256 amountToLock,
         uint256 lockDuration
     ) public {
-        stake(amountToStake);
-        lockStake(amountToLock, lockDuration);
+        _stake(msg.sender, amountToStake);
+        _lockStake(msg.sender, amountToLock, lockDuration);
+    }
+
+    /**
+     * @notice Stakes tokens and locks a portion of them for a specified duration
+     * @dev This function is a convenience function that combines stake() and lockStake()
+     * @param amountToStake The amount of tokens to stake
+     * @param lockDuration The duration in seconds to lock the tokens
+     */
+    function stakeAndLockOnBehalf(
+        address account,
+        uint256 amountToStake,
+        uint256 lockDuration
+    ) public onlyAllowedStakerOnBehalf {
+        _stake(account, amountToStake);
+        uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
+
+        _lockStake(account, currentLockedStakeAmount + amountToStake, lockDuration);
     }
 
     /**
@@ -396,6 +396,25 @@ contract StakingRewards is
     }
 
     /**
+     * @notice Adds an address to the list of allowed stakers on behalf of others
+     * @param stakerOnBehalf The address to allow staking on behalf
+     */
+    function addStakerOnBehalf(address stakerOnBehalf) external onlyOwner {
+        require(!_isAllowedStakerOnBehalf[stakerOnBehalf], "StakerOnBehalf is already allowed");
+        _isAllowedStakerOnBehalf[stakerOnBehalf] = true;
+        stakersOnBehalf.push(stakerOnBehalf);
+    }
+
+    /**
+     * @notice Removes an address from the list of allowed stakers on behalf of others
+     * @param stakerOnBehalf The address to disallow staking on behalf
+     */
+    function removeStakerOnBehalf(address stakerOnBehalf) external onlyOwner {
+        require(_isAllowedStakerOnBehalf[stakerOnBehalf], "StakerOnBehalf is not allowed");
+        _isAllowedStakerOnBehalf[stakerOnBehalf] = false;
+    }
+
+    /**
      * @notice Pauses staking functionality
      * @dev Only owner can pause. Withdrawals and reward claims remain available
      */
@@ -412,6 +431,86 @@ contract StakingRewards is
     }
 
     /* ========== INTERNAL FUNCTIONS ========== */
+
+    /**
+     * @notice Stakes tokens
+     * @dev Tokens are staked unlocked by default. Use lockStake() to lock staked tokens.
+     * @param account The address on whose behalf to stake
+     * @param amount The amount of tokens to stake
+     */
+    function _stake(
+        address account,
+        uint256 amount
+    ) internal nonReentrant whenNotPaused updateReward(account) {
+        require(amount > 0, "Cannot stake 0");
+        _totalSupply = _totalSupply + amount;
+        _balances[account] = _balances[account] + amount;
+        stakingToken.safeTransferFrom(msg.sender, address(this), amount);
+        emit Staked(account, amount);
+    }
+
+    /**
+     * @notice Locks staked tokens for a specified duration
+     * @dev User must have enough staked balance to cover the new lock amount. If a lock already exists,
+     *      the new amount cannot be less than the currently locked amount and the new unlock timestamp
+     *      cannot be earlier than the current unlock timestamp. Increasing the lock amount uses additional
+     *      unlocked staked balance on top of the already locked tokens.
+     * @param amount The amount of staked tokens to lock
+     * @param account The address on whose behalf to lock the tokens
+     * @param lockDuration The duration in seconds to lock the tokens
+     */
+    function _lockStake(
+        address account,
+        uint256 amount,
+        uint256 lockDuration
+    ) internal whenNotPaused {
+        require(lockDuration > 0, "Lock duration must be greater than 0");
+        require(amount > 0, "Amount must be greater than 0");
+
+        // Check that user has enough unlocked staked balance to lock
+        uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
+        uint256 newUnlockTimestamp = block.timestamp + lockDuration;
+
+        // Check if user has any locked tokens
+        if (currentLockedStakeAmount != 0) {
+            require(
+                amount >= currentLockedStakeAmount,
+                "Cannot reduce the amount of locked tokens"
+            );
+            require(
+                newUnlockTimestamp >= addressToLockedStake[account].unlockTimestamp,
+                "Cannot shorten the lock duration"
+            );
+        }
+
+        // Check that user has enough staked balance to lock
+        require(_balances[account] >= amount, "Not enough staked balance to lock");
+
+        // Update the locked tokens
+        addressToLockedStake[account].lockDuration = lockDuration;
+        addressToLockedStake[account].unlockTimestamp = newUnlockTimestamp;
+        addressToLockedStake[account].amount = amount;
+
+        emit StakeLocked(account, amount, lockDuration);
+    }
+
+    /**
+     * @notice Stakes tokens and locks a portion of them for a specified duration
+     * @dev This function is a convenience function that combines stake() and lockStake()
+     * @param account The address on whose behalf to stake and lock
+     * @param amountToStake The amount of tokens to stake
+     * @param amountToLock The amount of staked tokens to lock (must be <= amountToStake)
+     * @param lockDuration The duration in seconds to lock the tokens
+     */
+    function _stakeAndLock(
+        address account,
+        uint256 amountToStake,
+        uint256 amountToLock,
+        uint256 lockDuration
+    ) internal {
+        _stake(account, amountToStake);
+        _lockStake(account, amountToLock, lockDuration);
+    }
 
     /**
      * @notice Internal function to set the rewards distribution address
@@ -441,6 +540,11 @@ contract StakingRewards is
 
     modifier onlyRewardsDistribution() {
         require(msg.sender == rewardsDistribution, "Caller is not RewardsDistribution contract");
+        _;
+    }
+
+    modifier onlyAllowedStakerOnBehalf() {
+        require(_isAllowedStakerOnBehalf[msg.sender], "Staking on behalf is not allowed for this address");
         _;
     }
 
