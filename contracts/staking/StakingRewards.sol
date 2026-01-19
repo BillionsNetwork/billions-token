@@ -72,8 +72,9 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added NatSpec documentation to all functions
  * - Consolidated validation logic into internal functions to reduce code duplication
  * - Removed duplicate validation checks from initialize() (now handled by internal functions)
+ * - Contract layout keccak256(abi.encode(uint256(keccak256("billions.storage.StakingRewards")) -1 ))
+ *   & ~bytes32(uint256(0xff))
  */
-// keccak256(abi.encode(uint256(keccak256("billions.storage.StakingRewards")) -1 )) & ~bytes32(uint256(0xff));
 contract StakingRewards
     is IStakingRewards, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable
     layout at 0xd1679a7c7d3c3947e91675088db07315d80e787890d056336cd97cbdbd602800
