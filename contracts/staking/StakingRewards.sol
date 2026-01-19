@@ -72,12 +72,12 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added NatSpec documentation to all functions
  * - Consolidated validation logic into internal functions to reduce code duplication
  * - Removed duplicate validation checks from initialize() (now handled by internal functions)
- * - Contract layout keccak256(abi.encode(uint256(keccak256("billions.storage.StakingRewards")) -1 ))
- *   & ~bytes32(uint256(0xff))
  */
-contract StakingRewards
-    is IStakingRewards, Ownable2StepUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable
-    layout at 0xd1679a7c7d3c3947e91675088db07315d80e787890d056336cd97cbdbd602800
+contract StakingRewards is
+    IStakingRewards,
+    Ownable2StepUpgradeable,
+    ReentrancyGuardUpgradeable,
+    PausableUpgradeable
 {
     using SafeERC20 for IERC20;
 
@@ -102,8 +102,7 @@ contract StakingRewards
 
     mapping(address => LockedStake) public addressToLockedStake;
 
-    address[] public stakersOnBehalf;
-    mapping(address => bool) private _isAllowedStakerOnBehalf;
+    address public stakerOnBehalf;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -228,16 +227,6 @@ contract StakingRewards
     }
 
     /**
-     * @notice Stakes tokens
-     * @dev Tokens are staked unlocked by default. Use lockStake() to lock staked tokens.
-     * @param amount The amount of tokens to stake
-     * @param account The address on whose behalf to stake
-     */
-    function stakeOnBehalf(uint256 amount, address account) public onlyAllowedStakerOnBehalf {
-        _stake(account, amount);
-    }
-
-    /**
      * @notice Locks staked tokens for a specified duration
      * @dev User must have enough staked balance to cover the new lock amount. If a lock already exists,
      *      the new amount cannot be less than the currently locked amount and the new unlock timestamp
@@ -277,10 +266,9 @@ contract StakingRewards
         address account,
         uint256 amountToStake,
         uint256 lockDuration
-    ) public onlyAllowedStakerOnBehalf {
+    ) public onlyStakerOnBehalf {
         _stake(account, amountToStake);
         uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
-
         _lockStake(account, currentLockedStakeAmount + amountToStake, lockDuration);
     }
 
@@ -396,22 +384,11 @@ contract StakingRewards
     }
 
     /**
-     * @notice Adds an address to the list of allowed stakers on behalf of others
-     * @param stakerOnBehalf The address to allow staking on behalf
+     * @notice Sets the address to allowed staker on behalf of others
+     * @param staker The address to allow staking on behalf
      */
-    function addStakerOnBehalf(address stakerOnBehalf) external onlyOwner {
-        require(!_isAllowedStakerOnBehalf[stakerOnBehalf], "StakerOnBehalf is already allowed");
-        _isAllowedStakerOnBehalf[stakerOnBehalf] = true;
-        stakersOnBehalf.push(stakerOnBehalf);
-    }
-
-    /**
-     * @notice Removes an address from the list of allowed stakers on behalf of others
-     * @param stakerOnBehalf The address to disallow staking on behalf
-     */
-    function removeStakerOnBehalf(address stakerOnBehalf) external onlyOwner {
-        require(_isAllowedStakerOnBehalf[stakerOnBehalf], "StakerOnBehalf is not allowed");
-        _isAllowedStakerOnBehalf[stakerOnBehalf] = false;
+    function setStakerOnBehalf(address staker) external onlyOwner {
+        stakerOnBehalf = staker;
     }
 
     /**
@@ -543,11 +520,8 @@ contract StakingRewards
         _;
     }
 
-    modifier onlyAllowedStakerOnBehalf() {
-        require(
-            _isAllowedStakerOnBehalf[msg.sender],
-            "Staking on behalf is not allowed for this address"
-        );
+    modifier onlyStakerOnBehalf() {
+        require(msg.sender == stakerOnBehalf, "Staking on behalf is not allowed for this address");
         _;
     }
 

@@ -714,7 +714,7 @@ describe('StakingRewards', function () {
             const lockDuration = 7 * 24 * 60 * 60; // 7 days
             const user2BalanceBefore = await stakingToken.balanceOf(user2.address);
 
-            await stakingRewards.connect(owner).addStakerOnBehalf(user2.address);
+            await stakingRewards.connect(owner).setStakerOnBehalf(user2.address);
 
             await stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStake, lockDuration);
 
@@ -733,7 +733,7 @@ describe('StakingRewards', function () {
 
             await stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration);
 
-            await stakingRewards.connect(owner).addStakerOnBehalf(user2.address);
+            await stakingRewards.connect(owner).setStakerOnBehalf(user2.address);
 
             await stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStake, lockDuration);
 

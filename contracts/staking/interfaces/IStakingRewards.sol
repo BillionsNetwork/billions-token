@@ -71,6 +71,12 @@ interface IStakingRewards {
         uint256 lockDuration
     ) external;
 
+    function stakeAndLockOnBehalf(
+        address account,
+        uint256 amountToStake,
+        uint256 lockDuration
+    ) external;
+
     function getReward() external;
 
     function exit() external;
@@ -84,6 +90,8 @@ interface IStakingRewards {
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external;
 
     function setRewardsDuration(uint256 _rewardsDuration) external;
+
+    function setStakerOnBehalf(address staker) external;
 
     function pause() external;
 
