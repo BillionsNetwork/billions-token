@@ -256,20 +256,20 @@ contract StakingRewards is
     }
 
     /**
-     * @notice Stakes tokens and locks a portion of them for a specified duration
-     * @dev This function is a convenience function that combines stake() and lockStake()
+     * @notice Stakes and locks tokens on behalf of an account for a specified duration
      * @param account The address on whose behalf to stake and lock
-     * @param amountToStake The amount of tokens to stake
+     * @param amount The amount of tokens to stake and lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
     function stakeAndLockOnBehalf(
         address account,
-        uint256 amountToStake,
+        uint256 amount,
         uint256 lockDuration
     ) public onlyStakerOnBehalf {
-        _stake(account, amountToStake);
         uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
-        _lockStake(account, currentLockedStakeAmount + amountToStake, lockDuration);
+        require(currentLockedStakeAmount == 0, "The account should not have an existing lock");
+        _stake(account, amount);
+        _lockStake(account, amount, lockDuration);
     }
 
     /**
@@ -385,10 +385,10 @@ contract StakingRewards is
 
     /**
      * @notice Sets the address to allowed staker on behalf of others
-     * @param staker The address to allow staking on behalf
+     * @param newStakerOnBehalf The address to allow staking on behalf
      */
-    function setStakerOnBehalf(address staker) external onlyOwner {
-        stakerOnBehalf = staker;
+    function setStakerOnBehalf(address newStakerOnBehalf) external onlyOwner {
+        stakerOnBehalf = newStakerOnBehalf;
     }
 
     /**
