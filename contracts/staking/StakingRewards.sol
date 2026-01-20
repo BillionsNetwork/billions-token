@@ -267,9 +267,8 @@ contract StakingRewards is
         uint256 lockDuration
     ) public onlyStakerOnBehalf {
         uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
-        require(currentLockedStakeAmount == 0, "The account should not have an existing lock");
         _stake(account, amount);
-        _lockStake(account, amount, lockDuration);
+        _lockStake(account, currentLockedStakeAmount + amount, lockDuration);
     }
 
     /**
