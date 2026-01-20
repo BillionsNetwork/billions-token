@@ -257,6 +257,8 @@ contract StakingRewards is
 
     /**
      * @notice Stakes and locks tokens on behalf of an account for a specified duration
+     * @dev Can only be called by the authorized stakerOnBehalf address. If the account already has a locked stake,
+     *      the new lock duration will be the maximum of the existing unlock timestamp and the new lock duration.
      * @param account The address on whose behalf to stake and lock
      * @param amount The amount of tokens to stake and lock
      * @param lockDuration The duration in seconds to lock the tokens
@@ -267,6 +269,11 @@ contract StakingRewards is
         uint256 lockDuration
     ) public onlyStakerOnBehalf {
         uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
+        if (currentLockedStakeAmount > 0) {
+            if (block.timestamp + lockDuration < addressToLockedStake[account].unlockTimestamp) {
+                lockDuration = addressToLockedStake[account].unlockTimestamp - block.timestamp;
+            }
+        }
         _stake(account, amount);
         _lockStake(account, currentLockedStakeAmount + amount, lockDuration);
     }
