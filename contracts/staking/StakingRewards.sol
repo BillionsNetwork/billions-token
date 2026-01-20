@@ -478,24 +478,6 @@ contract StakingRewards is
     }
 
     /**
-     * @notice Stakes tokens and locks a portion of them for a specified duration
-     * @dev This function is a convenience function that combines stake() and lockStake()
-     * @param account The address on whose behalf to stake and lock
-     * @param amountToStake The amount of tokens to stake
-     * @param amountToLock The amount of staked tokens to lock (must be <= amountToStake)
-     * @param lockDuration The duration in seconds to lock the tokens
-     */
-    function _stakeAndLock(
-        address account,
-        uint256 amountToStake,
-        uint256 amountToLock,
-        uint256 lockDuration
-    ) internal {
-        _stake(account, amountToStake);
-        _lockStake(account, amountToLock, lockDuration);
-    }
-
-    /**
      * @notice Internal function to set the rewards distribution address
      * @param _rewardsDistribution The address authorized to call notifyRewardAmount
      */
