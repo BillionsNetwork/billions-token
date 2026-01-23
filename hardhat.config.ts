@@ -37,6 +37,16 @@ const config: HardhatUserConfig = {
             url: process.env.ETHEREUM_MAINNET_RPC_URL || `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
             chainId: 1,
         },
+        'billions-testnet': {
+            ...sharedNetworkConfig,
+            url: process.env.BILLIONS_TESTNET_RPC_URL,
+            chainId: 6913,
+        },
+        'billions-mainnet': {
+            ...sharedNetworkConfig,
+            url: process.env.BILLIONS_MAINNET_RPC_URL,
+            chainId: 6913,
+        },
         // hardhat: {
         //   chainId: 11155111,
         //   forking: {
@@ -61,7 +71,30 @@ const config: HardhatUserConfig = {
         },
     },
     etherscan: {
-        apiKey: process.env.ETHERSCAN_API_KEY,
+        apiKey: {
+            sepolia: `${process.env.ETHERSCAN_API_KEY}`,
+            mainnet: `${process.env.ETHERSCAN_API_KEY}`,
+            'billions-testnet': 'abc',
+            'billions-mainnet': 'abc',
+        },
+        customChains: [
+            {
+                network: 'billions-testnet',
+                chainId: 6913,
+                urls: {
+                    apiURL: 'https://billions-testnet-blockscout.eu-north-2.gateway.fm/api/',
+                    browserURL: 'https://billions-testnet-blockscout.eu-north-2.gateway.fm',
+                },
+            },
+            {
+                network: 'billions-mainnet',
+                chainId: 45056,
+                urls: {
+                    apiURL: 'https://billions-blockscout.eu-north-2.gateway.fm/api/',
+                    browserURL: 'https://billions-blockscout.eu-north-2.gateway.fm',
+                },
+            },
+        ],
     },
     paths: {
         sources: './contracts',

@@ -1,13 +1,13 @@
-import Safe, { PredictedSafeProps, SafeAccountConfig } from '@safe-global/protocol-kit';
+import Safe, { PredictedSafeProps, SafeAccountConfig, SafeDeploymentConfig } from '@safe-global/protocol-kit';
 import { defineChain } from 'viem';
 import { waitForTransactionReceipt } from 'viem/actions';
 import fs from 'fs';
 import path from 'path';
-import hre from 'hardhat';
+import hre, { ethers } from 'hardhat';
 
 async function main() {
     const network = hre.network.name;
-    const safeConfigPath = path.join(__dirname,`./safe-config-${network}.json`);
+    const safeConfigPath = path.join(__dirname, `./safe-config-${network}.json`);
 
     if (!fs.existsSync(safeConfigPath)) {
         throw new Error(`Safe config file not found: ${safeConfigPath}`);
@@ -22,17 +22,31 @@ async function main() {
         owners: safeConfig.owners,
         threshold: Number(safeConfig.threshold),
         // More optional properties
+        to: ethers.ZeroAddress,
+        data: '0x',
+        fallbackHandler:
+            safeConfig.contractNetworks?.[chain.id.toString()]?.fallbackHandlerAddress || ethers.ZeroAddress,
+        paymentToken: ethers.ZeroAddress,
+        payment: 0,
+        paymentReceiver: ethers.ZeroAddress,
+    };
+
+    const safeDeploymentConfig: SafeDeploymentConfig = {
+        saltNonce: '0',
+        safeVersion: '1.3.0',
+        deploymentType: 'canonical',
     };
 
     const predictedSafe: PredictedSafeProps = {
         safeAccountConfig,
-        // More optional properties
+        safeDeploymentConfig
     };
 
     const protocolKit = await Safe.init({
         provider: chain.rpcUrls.default.http[0],
         signer: safeConfig.privateKeySender,
         predictedSafe,
+        contractNetworks: safeConfig.contractNetworks,
     });
 
     const safeAddress = await protocolKit.getAddress();
