@@ -46,16 +46,15 @@ export async function confirmTransaction(transactionIndex: number, transactionsO
     }
 
     const tx = transactions[transactionIndex];
-    const wallet = new ethers.Wallet(safeConfig.privateKeySender);
-    const owner = wallet.address;
+    const [owner] = await ethers.getSigners();
 
     console.log('='.repeat(80));
     console.log(
         `Billions Network Token - Confirming transaction ${transactionIndex + 1}/${transactions.length} "${tx.name}"`
     );
     console.log('='.repeat(80));
-    console.log('\nOwner signer:', owner);
-    console.log('Balance:', ethers.formatEther(await ethers.provider.getBalance(owner)), 'ETH');
+    console.log('\nOwner signer:', owner.address);
+    console.log('Balance:', ethers.formatEther(await ethers.provider.getBalance(owner.address)), 'ETH');
 
     console.log(
         `\nFound ${transactions.length} transactions to propose and confirm.\n[${transactions
@@ -104,10 +103,10 @@ export async function confirmTransaction(transactionIndex: number, transactionsO
     // Deterministic hash based on transaction parameters
     const safeTxHash = await protocolKit.getTransactionHash(safeTransaction);
 
-    const signedMessage = await signHash(signer, safeTxHash);
+    const senderSignature = await signHash(signer, safeTxHash);
     // Send the transaction
     console.log('   📤 Confirming Safe transaction...', safeTxHash);
-    await apiKit.confirmTransaction(safeTxHash, signedMessage);
+    await apiKit.confirmTransaction(safeTxHash, senderSignature);
 
     pendingTransactions = (await apiKit.getPendingTransactions(safeAddress)).results;
     console.log(
@@ -151,16 +150,15 @@ export async function executeTransaction(transactionIndex: number, transactionsO
     }
 
     const tx = transactions[transactionIndex];
-    const wallet = new ethers.Wallet(safeConfig.privateKeySender);
-    const owner = wallet.address;
+    const [owner] = await ethers.getSigners();
 
     console.log('='.repeat(80));
     console.log(
         `Billions Network Token - Executing transaction ${transactionIndex + 1}/${transactions.length} "${tx.name}"`
     );
     console.log('='.repeat(80));
-    console.log('\nOwner signer:', owner);
-    console.log('Balance:', ethers.formatEther(await ethers.provider.getBalance(owner)), 'ETH');
+    console.log('\nOwner signer:', owner.address);
+    console.log('Balance:', ethers.formatEther(await ethers.provider.getBalance(owner.address)), 'ETH');
 
     console.log(
         `\nFound ${transactions.length} transactions to propose and confirm.\n[${transactions
@@ -272,16 +270,15 @@ export async function proposeTransaction(transactionIndex: number, transactionsO
     }
 
     const tx = transactions[transactionIndex];
-    const wallet = new ethers.Wallet(safeConfig.privateKeySender);
-    const owner = wallet.address;
+    const [owner] = await ethers.getSigners();
 
     console.log('='.repeat(80));
     console.log(
         `Billions Network Token - Proposing transaction ${transactionIndex + 1}/${transactions.length} "${tx.name}"`
     );
     console.log('='.repeat(80));
-    console.log('\nOwner signer:', owner);
-    console.log('Balance:', ethers.formatEther(await ethers.provider.getBalance(owner)), 'ETH');
+    console.log('\nOwner signer:', owner.address);
+    console.log('Balance:', ethers.formatEther(await ethers.provider.getBalance(owner.address)), 'ETH');
 
     console.log(
         `\nFound ${transactions.length} transactions to propose and confirm.\n[${transactions
@@ -333,7 +330,7 @@ export async function proposeTransaction(transactionIndex: number, transactionsO
     console.log('   🆔 Safe Transaction Hash:', safeTxHash);
 
     // Sign transaction to verify that the transaction is coming from owner 1
-    const senderSignature = await protocolKit.signHash(safeTxHash);
+    const senderSignature = await signHash(owner, safeTxHash);
 
     // Send the transaction
     console.log('   📤 Proposing Safe transaction...', safeTxHash);
@@ -341,8 +338,8 @@ export async function proposeTransaction(transactionIndex: number, transactionsO
         safeAddress,
         safeTransactionData: safeTransaction.data,
         safeTxHash,
-        senderAddress: owner,
-        senderSignature: senderSignature.data,
+        senderAddress: owner.address,
+        senderSignature: senderSignature,
     });
 
     pendingTransactions = (await apiKit.getPendingTransactions(safeAddress)).results;

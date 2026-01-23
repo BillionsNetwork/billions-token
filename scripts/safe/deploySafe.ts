@@ -31,7 +31,7 @@ async function main() {
 
     const protocolKit = await Safe.init({
         provider: chain.rpcUrls.default.http[0],
-        signer: safeConfig.privateKeys[0],
+        signer: safeConfig.privateKeySender,
         predictedSafe,
     });
 

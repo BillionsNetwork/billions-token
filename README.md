@@ -67,7 +67,7 @@ This verifies all contracts on Etherscan and validates deployment parameters.
 
 ## Deploy with Safe Multisig
 
-1. Create `scripts/safe/safe-config-<network>.json` for the configuration of the Safe account filling the number of owners, private key for the sender, etc. for your new Safe Multisig.
+1. Create `scripts/safe/safe-config-<network>.json` for the configuration of the Safe account filling the owners, threshold, private key for the sender of the tx, etc. for your new Safe Multisig.
 
         Example for Ethereum Sepolia:
         ```
@@ -101,7 +101,7 @@ This verifies all contracts on Etherscan and validates deployment parameters.
         npm run generate:deployment:sepolia
         ```
         This will generate `output-deployment.json` with the transactions to be proposed, confirmed and executed later.
-6. Propose first transaction for the owner with `privateKeySender` in your safe config with `scripts/safe/deployment/proposeTransaction.ts`. The transaction will be confirmed also for this owner.
+6. Propose first transaction for the owner configured in your `hardhat.config.ts` (change `PRIVATE_KEY` or `LEDGER_ACCOUNT` from your `.env` for each owner) with `scripts/safe/deployment/proposeTransaction.ts`. The transaction will be confirmed also for this owner.
         ```
         const transactionIndex = 0; // Index of the transaction to propose
         ```
@@ -153,7 +153,7 @@ All upgrades go through the Timelock (2-day minimum delay):
         npm run generate:upgrade:sepolia
         ```
         This will generate `output-schedule-upgrade.json` and `output-execute-upgrade.json` with the transactions to be proposed, confirmed and executed later.
-3. Propose first transaction for the owner with `privateKeySender` in your safe config with `scripts/safe/schedule-upgrade/proposeTransaction.ts`. The transaction will be confirmed also for this owner.
+3. Propose first transaction for the owner configured in your `hardhat.config.ts` (change `PRIVATE_KEY` or `LEDGER_ACCOUNT` from your `.env` for each owner) with `scripts/safe/schedule-upgrade/proposeTransaction.ts`. The transaction will be confirmed also for this owner.
         ```
         const transactionIndex = 0; // Index of the transaction to propose
         ```
@@ -184,7 +184,7 @@ All upgrades go through the Timelock (2-day minimum delay):
         ```
 6. Once done the process for the first transaction proceed in the same way from the step `3.` but for the second (transactionIndex = 1) for the schedule-upgrade in order to complete the schedule-upgrade with the Safe Multisig.
 7. Wait 2 days (minimum delay) for the execution of the upgrade.
-8. Propose first transaction for the owner with `privateKeySender` in your safe config with `scripts/safe/execute-upgrade/proposeTransaction.ts`. The transaction will be confirmed also for this owner.
+8. Propose first transaction for the owner configured in your `hardhat.config.ts` (change `PRIVATE_KEY` or `LEDGER_ACCOUNT` from your `.env` for each owner) with `scripts/safe/execute-upgrade/proposeTransaction.ts`. The transaction will be confirmed also for this owner.
         ```
         const transactionIndex = 0; // Index of the transaction to propose
         ```
