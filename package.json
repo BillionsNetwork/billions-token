@@ -7,6 +7,8 @@
         "compile": "hardhat compile",
         "test": "hardhat test",
         "coverage": "hardhat coverage",
+        "lint:contracts": "npx solhint contracts/**/*.sol",
+        "prettier:contracts": "prettier --write --plugin=prettier-plugin-solidity 'contracts/**/*.sol'",
         "token:generate": "hardhat run scripts/deployToken/generateFromMultisigDeterministic.ts",
         "token:deploy:localhost": "hardhat run scripts/deployToken/deploy.ts --network localhost",
         "token:deploy:sepolia": "hardhat run scripts/deployToken/deploy.ts --network sepolia",
@@ -33,7 +35,7 @@
         "prettier-plugin-solidity": "^1.1.1",
         "ts-node": "^10.9.2",
         "typescript": "^5.7.2",
-        "solhint": "4.1.1",
+        "solhint": "^6.0.2",
         "solhint-plugin-prettier": "^0.1.0"
     }
 }
