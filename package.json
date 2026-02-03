@@ -33,9 +33,9 @@
         "hardhat": "^2.22.18",
         "prettier": "^3.7.4",
         "prettier-plugin-solidity": "^1.1.1",
-        "solhint": "^6.0.2",
-        "solhint-plugin-prettier": "^0.1.0",
         "ts-node": "^10.9.2",
-        "typescript": "^5.7.2"
+        "typescript": "^5.7.2",
+        "solhint": "^6.0.2",
+        "solhint-plugin-prettier": "^0.1.0"
     }
 }
