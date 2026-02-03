@@ -214,6 +214,28 @@ describe('StakingRewards', function () {
             expect(await stakingRewards.balanceOf(user1.address)).to.equal(amount1 + amount2);
             expect(await stakingRewards.totalSupply()).to.equal(amount1 + amount2);
         });
+
+        it('Should fail stakeOnBehalf with unallowed staker on behalf', async function () {
+            const amountToStake = ethers.parseUnits('500', 18);
+
+            await expect(stakingRewards.connect(user2).stakeOnBehalf(user1.address, amountToStake)).to.be.revertedWith(
+                'Staking on behalf is not allowed for this address',
+            );
+        });
+
+        it('Should allow stakeOnBehalf on behalf of the user', async function () {
+            const amountToStake = ethers.parseUnits('500', 18);
+            const user2BalanceBefore = await stakingToken.balanceOf(user2.address);
+
+            await stakingRewards.connect(owner).setStakerOnBehalf(user2.address);
+
+            await stakingRewards.connect(user2).stakeOnBehalf(user1.address, amountToStake);
+
+            const user2BalanceAfter = await stakingToken.balanceOf(user2.address);
+
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(amountToStake);
+            expect(user2BalanceBefore - user2BalanceAfter).to.equal(amountToStake);
+        });
     });
 
     describe('Token Locking', function () {
@@ -736,10 +758,14 @@ describe('StakingRewards', function () {
 
             await stakingRewards.connect(owner).setStakerOnBehalf(user2.address);
 
-            await stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStakeOnBehalf, lockDuration);
+            await stakingRewards
+                .connect(user2)
+                .stakeAndLockOnBehalf(user1.address, amountToStakeOnBehalf, lockDuration);
             const user2BalanceAfter = await stakingToken.balanceOf(user2.address);
             expect(await stakingRewards.balanceOf(user1.address)).to.equal(amountToStake + amountToStakeOnBehalf);
-            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amountToLock + amountToStakeOnBehalf);
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(
+                amountToLock + amountToStakeOnBehalf,
+            );
             expect(user2BalanceBefore - user2BalanceAfter).to.equal(amountToStakeOnBehalf);
         });
 

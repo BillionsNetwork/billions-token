@@ -227,6 +227,16 @@ contract StakingRewards is
     }
 
     /**
+     * @notice Stakes tokens on behalf of an account
+     * @dev Tokens are staked unlocked by default. Use stakeAndLockOnBehalf to lock staked tokens.
+     * @param account The address on whose behalf to stake
+     * @param amount The amount of tokens to stake
+     */
+    function stakeOnBehalf(address account, uint256 amount) public onlyStakerOnBehalf {
+        _stake(account, amount);
+    }
+
+    /**
      * @notice Locks staked tokens for a specified duration
      * @dev User must have enough staked balance to cover the new lock amount. If a lock already exists,
      *      the new amount cannot be less than the currently locked amount and the new unlock timestamp
