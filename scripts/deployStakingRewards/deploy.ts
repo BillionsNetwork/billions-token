@@ -68,7 +68,7 @@ async function main() {
     const StakingRewardsFactory = await ethers.getContractFactory('StakingRewards');
     const stakingRewards = await upgrades.deployProxy(
         StakingRewardsFactory,
-        [input.MULTISIG, input.MULTISIG, input.BILLIONS_TOKEN, input.BILLIONS_TOKEN, input.REWARDS_DURATION],
+        [input.MULTISIG, input.REWARDS_DISTRIBUTOR, input.BILLIONS_TOKEN, input.BILLIONS_TOKEN, input.REWARDS_DURATION],
         {
             initializer: 'initialize',
             kind: 'transparent',

@@ -28,12 +28,64 @@ const config: HardhatUserConfig = {
             accounts: PRIVATE_KEY || MNEMONIC,
             chainId: 1,
         },
+        'billions-testnet': {
+            url: `${process.env.BILLIONS_TESTNET_RPC_URL}`,
+            accounts: PRIVATE_KEY || MNEMONIC,
+            chainId: 6913,
+        },
+        'billions-mainnet': {
+            url: `${process.env.BILLIONS_MAINNET_RPC_URL}`,
+            accounts: PRIVATE_KEY || MNEMONIC,
+            chainId: 45056,
+        },
+        // hardhat: {
+        //     chainId: 6913,
+        //     forking: {
+        //         url: `${process.env.BILLIONS_TESTNET_RPC_URL}`,
+        //     },
+        //     chains: {
+        //         6913: {
+        //             hardforkHistory: {
+        //                 london: 100000,
+        //             },
+        //         },
+        //     },
+        //     accounts: [
+        //         {
+        //             privateKey: process.env.PRIVATE_KEY as string,
+        //             balance: '1000000000000000000000000',
+        //         },
+        //     ],
+        // },
         localhost: {
             url: 'http://127.0.0.1:8545',
         },
     },
     etherscan: {
-        apiKey: process.env.ETHERSCAN_API_KEY,
+        apiKey: {
+            mainnet: process.env.ETHERSCAN_API_KEY || '',
+            sepolia: process.env.ETHERSCAN_API_KEY || '',
+            'billions-testnet': 'test',
+            'billions-mainnet': 'main',
+        },
+        customChains: [
+            {
+                network: 'billions-testnet',
+                chainId: 6913,
+                urls: {
+                    apiURL: 'https://explorer-testnet.billions.network/api/',
+                    browserURL: 'https://explorer-testnet.billions.network',
+                },
+            },
+            {
+                network: 'billions-mainnet',
+                chainId: 45056,
+                urls: {
+                    apiURL: 'https://explorer.billions.network/api/',
+                    browserURL: 'https://explorer.billions.network',
+                },
+            },
+        ],
     },
     paths: {
         sources: './contracts',
