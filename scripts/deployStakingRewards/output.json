@@ -1,0 +1,18 @@
+{
+  "network": "billions-mainnet",
+  "chainId": 45056,
+  "deployer": "0xAe15d2023A76174a940cbb2b7F44012C728B9d74",
+  "timestamp": "2026-02-24T11:47:54.145Z",
+  "addresses": {
+    "timelock": "0x5449aaAeFBf84308CF47014fDcD01Fa6C7c14438",
+    "proxy": "0xddF68B9b379617528b37437Ab201ED9AF60A0E1C",
+    "implementation": "0x79703a373e2349CE6aCeeecB95c0dB13D2F54e3A",
+    "proxyAdmin": "0xEc76886A629929e0AF02AfD43C3548C7790f6794"
+  },
+  "config": {
+    "multisig": "0x242daE44F5d8fb54B198D03a94dA45B5a4413e21",
+    "billionsToken": "0xb060E40C3B053C33D458f7105F95DA52741CAb62",
+    "rewardsDuration": 604800,
+    "timelockMinDelay": 172800
+  }
+}
