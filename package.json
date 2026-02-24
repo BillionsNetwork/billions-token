@@ -40,5 +40,12 @@
         "typescript": "^5.7.2",
         "solhint": "^6.0.2",
         "solhint-plugin-prettier": "^0.1.0"
+    },
+    "overrides": {
+        "diff": "^8.0.3",
+        "axios": "^1.13.5",
+        "lodash": "^4.17.23",
+        "bn.js": "^5.2.3",
+        "minimatch": "^10.2.2"
     }
 }
