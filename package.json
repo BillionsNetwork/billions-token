@@ -19,7 +19,8 @@
         "staking:deploy:sepolia": "hardhat run scripts/deployStakingRewards/deploy.ts --network sepolia",
         "staking:deploy:mainnet": "hardhat run scripts/deployStakingRewards/deploy.ts --network mainnet",
         "staking:verify:sepolia": "hardhat run scripts/deployStakingRewards/verify.ts --network sepolia",
-        "staking:verify:mainnet": "hardhat run scripts/deployStakingRewards/verify.ts --network mainnet"
+        "staking:verify:mainnet": "hardhat run scripts/deployStakingRewards/verify.ts --network mainnet",
+        "postinstall": "patch-package"
     },
     "engines": {
         "node": ">=18.0.0"
@@ -27,7 +28,9 @@
     "dependencies": {
         "@nomicfoundation/hardhat-toolbox": "^5.0.0",
         "@openzeppelin/contracts-upgradeable": "^5.4.0",
+        "@nomicfoundation/hardhat-ledger": "1.0.3",
         "@openzeppelin/hardhat-upgrades": "^3.9.1",
+        "patch-package": "^8.0.0",
         "@types/node": "^22.10.2",
         "dotenv": "^16.4.7",
         "hardhat": "^2.22.18",

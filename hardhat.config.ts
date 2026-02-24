@@ -1,10 +1,14 @@
 import type { HardhatUserConfig } from 'hardhat/config';
 import '@openzeppelin/hardhat-upgrades';
 import '@nomicfoundation/hardhat-toolbox';
+import '@nomicfoundation/hardhat-ledger';
 import 'dotenv/config';
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : undefined;
 const MNEMONIC = process.env.MNEMONIC ? { mnemonic: process.env.MNEMONIC } : undefined;
+const LEDGER_ACCOUNT = process.env.LEDGER_ACCOUNT ? [process.env.LEDGER_ACCOUNT] : undefined;
+
+const accounts = LEDGER_ACCOUNT ? { ledgerAccounts: LEDGER_ACCOUNT } : { accounts: PRIVATE_KEY || MNEMONIC };
 
 const config: HardhatUserConfig = {
     solidity: {
@@ -20,22 +24,22 @@ const config: HardhatUserConfig = {
     networks: {
         sepolia: {
             url: process.env.SEPOLIA_RPC_URL || `https://sepolia.infura.io/v3/${process.env.INFURA_API_KEY}`,
-            accounts: PRIVATE_KEY || MNEMONIC,
+            ...accounts,
             chainId: 11155111,
         },
         mainnet: {
             url: process.env.MAINNET_RPC_URL || `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
-            accounts: PRIVATE_KEY || MNEMONIC,
+            ...accounts,
             chainId: 1,
         },
         'billions-testnet': {
             url: `${process.env.BILLIONS_TESTNET_RPC_URL}`,
-            accounts: PRIVATE_KEY || MNEMONIC,
+            ...accounts,
             chainId: 6913,
         },
         'billions-mainnet': {
             url: `${process.env.BILLIONS_MAINNET_RPC_URL}`,
-            accounts: PRIVATE_KEY || MNEMONIC,
+            ...accounts,
             chainId: 45056,
         },
         // hardhat: {
