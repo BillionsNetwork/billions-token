@@ -188,5 +188,5 @@ All upgrades go through the Timelock (2-day minimum delay):
 
 
 ## Security Audits
-1. [HALBORN](https://www.halborn.com/audits) has performed a security audit of BillionsNetworkToken smart contract and compiled report on Dec 5, 2025: [billions-token-7661d8](https://github.com/BillionsNetwork/billions-token/blob/main/audits/Billions_Token_SSC.pdf).  
-2. [HALBORN](https://www.halborn.com/audits) has performed a security audit of BillionsNetworkToken smart contract and compiled report on Jan 5, 2026: [staking-rewards-0b472f](https://github.com/BillionsNetwork/billions-token/blob/main/audits/Staking_Rewards_SSC.pdf).
+1. [HALBORN](https://www.halborn.com/audits) has performed a security audit of `BillionsNetworkToken` smart contract and compiled report on Dec 5, 2025: [billions-token-7661d8](https://github.com/BillionsNetwork/billions-token/blob/main/audits/Billions_Token_SSC.pdf).  
+2. [HALBORN](https://www.halborn.com/audits) has performed a security audit of `StakingRewards` smart contract and compiled report on Jan 5, 2026: [staking-rewards-0b472f](https://github.com/BillionsNetwork/billions-token/blob/main/audits/Staking_Rewards_SSC.pdf).
