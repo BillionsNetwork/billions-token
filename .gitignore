@@ -9,3 +9,4 @@ coverage
 artifacts/
 .vscode
 typechain-types
+scripts/safe/*.json

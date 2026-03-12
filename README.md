@@ -172,6 +172,21 @@ All upgrades go through the Timelock (2-day minimum delay):
 - Reentrancy protection on all mutative functions
 - Pausable staking in case of emergency
 
+## Deployments
+
+### Token (BILL)
+
+|     Network      |     Address                                |
+|:-----------------------:|:------------------------------------------:|
+|       **Ethereum**        | [0xb1110919016846972056ab995054d65560d5f05e](https://etherscan.io/address/0xb1110919016846972056ab995054d65560d5f05e) |
+|    **Billions Mainnet**    | [0xb060E40C3B053C33D458f7105F95DA52741CAb62](https://explorer.billions.network/address/0xb060E40C3B053C33D458f7105F95DA52741CAb62) |
+
+### StakingRewards
+|     Network      |     Address                                |
+|:-----------------------:|:------------------------------------------:|
+|    **Billions Mainnet**    | [0xddF68B9b379617528b37437Ab201ED9AF60A0E1C](https://explorer.billions.network/address/0xddF68B9b379617528b37437Ab201ED9AF60A0E1C) |
+
+
 ## Security Audits
-1. [HALBORN](https://www.halborn.com/audits) has performed a security audit of BillionsNetworkToken smart contract and compiled report on Dec 5, 2025: [billions-token-7661d8](https://github.com/BillionsNetwork/billions-token/blob/main/audits/Billions_Token_SSC.pdf).  
-2. [HALBORN](https://www.halborn.com/audits) has performed a security audit of BillionsNetworkToken smart contract and compiled report on Jan 5, 2026: [staking-rewards-0b472f](https://github.com/BillionsNetwork/billions-token/blob/main/audits/Staking_Rewards_SSC.pdf).
+1. [HALBORN](https://www.halborn.com/audits) has performed a security audit of `BillionsNetworkToken` smart contract and compiled report on Dec 5, 2025: [billions-token-7661d8](https://github.com/BillionsNetwork/billions-token/blob/main/audits/Billions_Token_SSC.pdf).  
+2. [HALBORN](https://www.halborn.com/audits) has performed a security audit of `StakingRewards` smart contract and compiled report on Jan 5, 2026: [staking-rewards-0b472f](https://github.com/BillionsNetwork/billions-token/blob/main/audits/Staking_Rewards_SSC.pdf).
