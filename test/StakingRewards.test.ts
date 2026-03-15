@@ -573,6 +573,22 @@ describe('StakingRewards', function () {
                 'Previous rewards period must be complete before changing the duration for the new period',
             );
         });
+
+        it('Should allow owner to set only lock staking period', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            expect(await stakingRewards.onlyLockStakingPeriodDuration()).to.equal(duration);
+        });
+
+        it('Should fail to set only lock staking period before period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            expect(await stakingRewards.onlyLockStakingPeriodDuration()).to.equal(duration);
+
+            await expect(stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration)).to.be.revertedWith(
+                'Previous only lock staking period must be complete before changing the duration for the new period',
+            );
+        });
     });
 
     describe('Edge Cases', function () {
@@ -1223,6 +1239,10 @@ describe('StakingRewards', function () {
         it('onlyOwner: setRewardsDuration should fail for non-owner', async function () {
             await expect(stakingRewards.connect(user1).setRewardsDuration(86400)).to.be.reverted;
         });
+
+        it('onlyOwner: setOnlyLockStakingPeriod should fail for non-owner', async function () {
+            await expect(stakingRewards.connect(user1).setOnlyLockStakingPeriod(7776000)).to.be.reverted;
+        });
     });
 
     describe('Require Statement Branch Coverage', function () {
@@ -1438,6 +1458,7 @@ describe('StakingRewards', function () {
             await stakingRewards.getLockedStakeAmount(user1.address);
             await stakingRewards.paused();
             await stakingRewards.owner();
+            await stakingRewards.onlyLockStakingPeriodDuration();
         });
 
         // Test lockStake when currentLockedStakeAmount == 0 path explicitly
@@ -1502,6 +1523,117 @@ describe('StakingRewards', function () {
 
             // Rate should be different (includes leftover)
             expect(rate2).to.not.equal(rate1);
+        });
+
+        it('Should fail to get rewards before only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await expect(stakingRewards.connect(user1).getReward()).to.be.revertedWith(
+                'Get rewards not allowed during only lock staking period',
+            );
+        });
+
+        it('Should fail to withdraw before only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await expect(stakingRewards.connect(user1).withdraw(stakeAmount / 2n)).to.be.revertedWith(
+                'Withdraw not allowed during only lock staking period',
+            );
+        });
+
+        it('Should succeed to get rewards after only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await time.increase(duration); // Fast forward time to after the lock period
+            await expect(stakingRewards.connect(user1).getReward()).to.not.be.reverted;
+        });
+
+        it('Should succeed to withdraw after only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await time.increase(duration); // Fast forward time to after the only lock staking period
+            await expect(stakingRewards.connect(user1).withdraw(stakeAmount / 2n)).to.not.be.reverted;
+        });
+
+        it('Should not allow stakeAndLock with lock period before only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+
+            const amountToStake = ethers.parseUnits('500', 18);
+            const amountToLock = ethers.parseUnits('300', 18);
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await expect(
+                stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration),
+            ).to.be.revertedWith('Lock duration must be greater than the only lock staking period');
+        });
+
+        it('Should allow stakeAndLock with lock period after only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await time.increase(duration); // Fast forward time to after the only lock staking period
+
+            const amountToStake = ethers.parseUnits('500', 18);
+            const amountToLock = ethers.parseUnits('300', 18);
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration);
+
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(stakeAmount + amountToStake); // Previous stake + new stake
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amountToLock);
+        });
+
+        it('Should not allow stakeAndLockOnBehalf with lock period before only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await stakingRewards.connect(owner).setStakerOnBehalf(user1.address);
+
+            const amount = ethers.parseUnits('300', 18);
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await expect(
+                stakingRewards.connect(user1).stakeAndLockOnBehalf(user2, amount, lockDuration),
+            ).to.be.revertedWith('Lock duration must be greater than the only lock staking period');
+        });
+
+        it('Should allow stakeAndLockOnBehalf with lock period after only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await stakingRewards.connect(owner).setStakerOnBehalf(user1.address);
+
+            await time.increase(duration); // Fast forward time to after the only lock staking period
+
+            const amount = ethers.parseUnits('300', 18);
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await stakingRewards.connect(user1).stakeAndLockOnBehalf(user2, amount, lockDuration);
+
+            expect(await stakingRewards.balanceOf(user2.address)).to.equal(amount);
+            expect(await stakingRewards.getLockedStakeAmount(user2.address)).to.equal(amount);
+        });
+
+        it('Should not allow lockStake with lock period before only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await expect(stakingRewards.connect(user1).lockStake(stakeAmount, lockDuration)).to.be.revertedWith(
+                'Lock duration must be greater than the only lock staking period',
+            );
+        });
+
+        it('Should allow lockStake with lock period after only lock staking period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await time.increase(duration); // Fast forward time to after the only lock staking period
+
+            const lockDuration = 7 * 24 * 60 * 60; // 7 days
+
+            await stakingRewards.connect(user1).lockStake(stakeAmount, lockDuration);
+
+            expect(await stakingRewards.balanceOf(user1.address)).to.equal(stakeAmount); // Previous staked amount
+            expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(stakeAmount); // All should be locked
         });
     });
 });

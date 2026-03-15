@@ -98,4 +98,6 @@ interface IStakingRewards {
     function pause() external;
 
     function unpause() external;
+
+    function setOnlyLockStakingPeriod(uint256 duration) external;
 }

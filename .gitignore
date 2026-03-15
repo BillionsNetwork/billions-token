@@ -10,3 +10,4 @@ artifacts/
 .vscode
 typechain-types
 scripts/safe/*.json
+scripts/deployStakingRewards/*testnet*.json

@@ -103,6 +103,8 @@ contract StakingRewards is
     mapping(address => LockedStake) public addressToLockedStake;
 
     address public stakerOnBehalf;
+    uint256 public onlyLockStakingPeriodStart;
+    uint256 public onlyLockStakingPeriodDuration;
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -223,6 +225,11 @@ contract StakingRewards is
      * @param amount The amount of tokens to stake
      */
     function stake(uint256 amount) public {
+        require(
+            onlyLockStakingPeriodStart == 0 ||
+                block.timestamp >= onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
+            "Only lock staking allowed during this period"
+        );
         _stake(msg.sender, amount);
     }
 
@@ -233,6 +240,11 @@ contract StakingRewards is
      * @param amount The amount of tokens to stake
      */
     function stakeOnBehalf(address account, uint256 amount) public onlyStakerOnBehalf {
+        require(
+            onlyLockStakingPeriodStart == 0 ||
+                block.timestamp >= onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
+            "Only lock staking allowed during this period"
+        );
         _stake(account, amount);
     }
 
@@ -296,6 +308,12 @@ contract StakingRewards is
     function withdraw(uint256 amount) public nonReentrant updateReward(msg.sender) {
         require(amount > 0, "Cannot withdraw 0");
 
+        require(
+            onlyLockStakingPeriodStart == 0 ||
+                block.timestamp >= onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
+            "Withdraw not allowed during only lock staking period"
+        );
+
         // Check if there are any locked tokens
         uint256 lockedStakeAmount = getLockedStakeAmount(msg.sender);
 
@@ -315,6 +333,11 @@ contract StakingRewards is
      * @notice Claims all pending rewards for the caller
      */
     function getReward() public nonReentrant updateReward(msg.sender) {
+        require(
+            onlyLockStakingPeriodStart == 0 ||
+                block.timestamp >= onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
+            "Get rewards not allowed during only lock staking period"
+        );
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
             rewards[msg.sender] = 0;
@@ -371,6 +394,22 @@ contract StakingRewards is
      */
     function setRewardsDistribution(address _rewardsDistribution) external onlyOwner {
         _setRewardsDistribution(_rewardsDistribution);
+    }
+
+    /**
+     * @notice Sets the period during which only lock staking is allowed
+     * @param duration The duration in seconds for which only lock staking is allowed
+     */
+    function setOnlyLockStakingPeriod(uint256 duration) external onlyOwner {
+        require(duration > 0, "Only lock staking period must be greater than 0");
+        require(
+            onlyLockStakingPeriodStart == 0 ||
+                block.timestamp > onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
+            "Previous only lock staking period must be complete before changing the duration for the new period"
+        );
+        onlyLockStakingPeriodStart = block.timestamp;
+        onlyLockStakingPeriodDuration = duration;
+        emit OnlyLockStakingPeriodUpdated(duration);
     }
 
     /**
@@ -459,6 +498,12 @@ contract StakingRewards is
     ) internal whenNotPaused {
         require(lockDuration > 0, "Lock duration must be greater than 0");
         require(amount > 0, "Amount must be greater than 0");
+        require(
+            onlyLockStakingPeriodStart == 0 ||
+                block.timestamp + lockDuration >=
+                onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
+            "Lock duration must be greater than the only lock staking period"
+        );
 
         // Check that user has enough unlocked staked balance to lock
         uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
@@ -543,4 +588,5 @@ contract StakingRewards is
     event Recovered(address token, uint256 amount);
     event RewardsDistributionUpdated(address indexed newRewardsDistribution);
     event StakeLocked(address indexed user, uint256 amount, uint256 lockDuration);
+    event OnlyLockStakingPeriodUpdated(uint256 newDuration);
 }
