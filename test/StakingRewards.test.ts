@@ -65,7 +65,12 @@ describe('StakingRewards', function () {
         it('Should deploy with correct initial values', async function () {
             expect(await stakingRewards.rewardsToken()).to.equal(await rewardsToken.getAddress());
             expect(await stakingRewards.stakingToken()).to.equal(await stakingToken.getAddress());
-            expect(await stakingRewards.rewardsDistribution()).to.equal(rewardsDistributor.address);
+            expect(
+                await stakingRewards.hasRole(
+                    await stakingRewards.REWARDS_DISTRIBUTOR_ROLE(),
+                    rewardsDistributor.address,
+                ),
+            ).to.equal(true);
             expect(await stakingRewards.rewardsDuration()).to.equal(REWARDS_DURATION);
             expect(await stakingRewards.owner()).to.equal(owner.address);
         });
@@ -163,12 +168,6 @@ describe('StakingRewards', function () {
             ).to.be.revertedWith('RewardsDuration must be greater than 0');
         });
 
-        it('Should fail setRewardsDistribution with zero address', async function () {
-            await expect(stakingRewards.connect(owner).setRewardsDistribution(ethers.ZeroAddress)).to.be.revertedWith(
-                'RewardsDistribution cannot be zero address',
-            );
-        });
-
         it('Should fail setRewardsDuration with zero value', async function () {
             // Wait for period to finish first
             await time.increase(REWARDS_DURATION + 1);
@@ -218,16 +217,16 @@ describe('StakingRewards', function () {
         it('Should fail stakeOnBehalf with unallowed staker on behalf', async function () {
             const amountToStake = ethers.parseUnits('500', 18);
 
-            await expect(stakingRewards.connect(user2).stakeOnBehalf(user1.address, amountToStake)).to.be.revertedWith(
-                'Staking on behalf is not allowed for this address',
-            );
+            await expect(stakingRewards.connect(user2).stakeOnBehalf(user1.address, amountToStake))
+                .to.be.revertedWithCustomError(stakingRewards, 'AccessControlUnauthorizedAccount')
+                .withArgs(user2.address, await stakingRewards.STAKER_ON_BEHALF_ROLE());
         });
 
         it('Should allow stakeOnBehalf on behalf of the user', async function () {
             const amountToStake = ethers.parseUnits('500', 18);
             const user2BalanceBefore = await stakingToken.balanceOf(user2.address);
 
-            await stakingRewards.connect(owner).setStakerOnBehalf(user2.address);
+            await stakingRewards.connect(owner).grantRole(await stakingRewards.STAKER_ON_BEHALF_ROLE(), user2.address);
 
             await stakingRewards.connect(user2).stakeOnBehalf(user1.address, amountToStake);
 
@@ -448,9 +447,9 @@ describe('StakingRewards', function () {
             const rewardAmount = ethers.parseUnits('10000', 18);
             await rewardsToken.transfer(await stakingRewards.getAddress(), rewardAmount);
 
-            await expect(stakingRewards.connect(user1).notifyRewardAmount(rewardAmount)).to.be.revertedWith(
-                'Caller is not RewardsDistribution contract',
-            );
+            await expect(stakingRewards.connect(user1).notifyRewardAmount(rewardAmount))
+                .to.be.revertedWithCustomError(stakingRewards, 'AccessControlUnauthorizedAccount')
+                .withArgs(user1.address, await stakingRewards.REWARDS_DISTRIBUTOR_ROLE());
         });
 
         it('Should emit RewardAdded event', async function () {
@@ -525,14 +524,12 @@ describe('StakingRewards', function () {
         });
 
         it('Should allow owner to set rewards distribution', async function () {
-            await stakingRewards.connect(owner).setRewardsDistribution(user1.address);
-            expect(await stakingRewards.rewardsDistribution()).to.equal(user1.address);
-        });
-
-        it('Should emit RewardsDistributionUpdated event', async function () {
-            await expect(stakingRewards.connect(owner).setRewardsDistribution(user1.address))
-                .to.emit(stakingRewards, 'RewardsDistributionUpdated')
-                .withArgs(user1.address);
+            await stakingRewards
+                .connect(owner)
+                .grantRole(await stakingRewards.REWARDS_DISTRIBUTOR_ROLE(), user1.address);
+            expect(
+                await stakingRewards.hasRole(await stakingRewards.REWARDS_DISTRIBUTOR_ROLE(), user1.address),
+            ).to.equal(true);
         });
 
         it('Should allow owner to recover ERC20 tokens', async function () {
@@ -574,19 +571,19 @@ describe('StakingRewards', function () {
             );
         });
 
-        it('Should allow owner to set only lock staking period', async function () {
+        it('Should allow owner to set initial lock period', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-            expect(await stakingRewards.onlyLockStakingPeriodDuration()).to.equal(duration);
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
+            expect(await stakingRewards.initialLockPeriodDuration()).to.equal(duration);
         });
 
-        it('Should fail to set only lock staking period before period finishes', async function () {
+        it('Should fail to set initial lock period before period finishes', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-            expect(await stakingRewards.onlyLockStakingPeriodDuration()).to.equal(duration);
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
+            expect(await stakingRewards.initialLockPeriodDuration()).to.equal(duration);
 
-            await expect(stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration)).to.be.revertedWith(
-                'Previous only lock staking period must be complete before changing the duration for the new period',
+            await expect(stakingRewards.connect(owner).setInitialLockPeriod(duration)).to.be.revertedWith(
+                'Previous initial lock period must be complete before changing the duration for the new period',
             );
         });
     });
@@ -742,9 +739,9 @@ describe('StakingRewards', function () {
             const amountToStake = ethers.parseUnits('500', 18);
             const lockDuration = 7 * 24 * 60 * 60; // 7 days
 
-            await expect(
-                stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStake, lockDuration),
-            ).to.be.revertedWith('Staking on behalf is not allowed for this address');
+            await expect(stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStake, lockDuration))
+                .to.be.revertedWithCustomError(stakingRewards, 'AccessControlUnauthorizedAccount')
+                .withArgs(user2.address, await stakingRewards.STAKER_ON_BEHALF_ROLE());
         });
 
         it('Should allow stakeAndLockOnBehalf in one call without user previous stake', async function () {
@@ -752,7 +749,7 @@ describe('StakingRewards', function () {
             const lockDuration = 7 * 24 * 60 * 60; // 7 days
             const user2BalanceBefore = await stakingToken.balanceOf(user2.address);
 
-            await stakingRewards.connect(owner).setStakerOnBehalf(user2.address);
+            await stakingRewards.connect(owner).grantRole(await stakingRewards.STAKER_ON_BEHALF_ROLE(), user2.address);
 
             await stakingRewards.connect(user2).stakeAndLockOnBehalf(user1.address, amountToStake, lockDuration);
 
@@ -772,7 +769,7 @@ describe('StakingRewards', function () {
 
             await stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration);
 
-            await stakingRewards.connect(owner).setStakerOnBehalf(user2.address);
+            await stakingRewards.connect(owner).grantRole(await stakingRewards.STAKER_ON_BEHALF_ROLE(), user2.address);
 
             await stakingRewards
                 .connect(user2)
@@ -1120,9 +1117,9 @@ describe('StakingRewards', function () {
         // onlyRewardsDistribution modifier - FAILURE path
         it('onlyRewardsDistribution: should fail when caller is not rewardsDistribution', async function () {
             const rewardAmount = ethers.parseUnits('7000', 18);
-            await expect(stakingRewards.connect(user1).notifyRewardAmount(rewardAmount)).to.be.revertedWith(
-                'Caller is not RewardsDistribution contract',
-            );
+            await expect(stakingRewards.connect(user1).notifyRewardAmount(rewardAmount))
+                .to.be.revertedWithCustomError(stakingRewards, 'AccessControlUnauthorizedAccount')
+                .withArgs(user1.address, await stakingRewards.REWARDS_DISTRIBUTOR_ROLE());
         });
 
         // updateReward modifier - account != address(0) path
@@ -1224,12 +1221,17 @@ describe('StakingRewards', function () {
         });
 
         it('onlyOwner: setRewardsDistribution should succeed for owner', async function () {
-            await stakingRewards.connect(owner).setRewardsDistribution(user2.address);
-            expect(await stakingRewards.rewardsDistribution()).to.equal(user2.address);
+            await stakingRewards
+                .connect(owner)
+                .grantRole(await stakingRewards.REWARDS_DISTRIBUTOR_ROLE(), user2.address);
+            expect(await stakingRewards.hasRole(await stakingRewards.REWARDS_DISTRIBUTOR_ROLE(), user2.address)).to.be
+                .true;
         });
 
-        it('onlyOwner: setRewardsDistribution should fail for non-owner', async function () {
-            await expect(stakingRewards.connect(user1).setRewardsDistribution(user2.address)).to.be.reverted;
+        it('onlyOwner: grantRole REWARDS_DISTRIBUTOR_ROLE should fail for non-owner', async function () {
+            await expect(
+                stakingRewards.connect(user1).grantRole(await stakingRewards.REWARDS_DISTRIBUTOR_ROLE(), user2.address),
+            ).to.be.reverted;
         });
 
         it('onlyOwner: recoverERC20 should fail for non-owner', async function () {
@@ -1240,8 +1242,8 @@ describe('StakingRewards', function () {
             await expect(stakingRewards.connect(user1).setRewardsDuration(86400)).to.be.reverted;
         });
 
-        it('onlyOwner: setOnlyLockStakingPeriod should fail for non-owner', async function () {
-            await expect(stakingRewards.connect(user1).setOnlyLockStakingPeriod(7776000)).to.be.reverted;
+        it('onlyOwner: setInitialLockPeriod should fail for non-owner', async function () {
+            await expect(stakingRewards.connect(user1).setInitialLockPeriod(7776000)).to.be.reverted;
         });
     });
 
@@ -1445,7 +1447,6 @@ describe('StakingRewards', function () {
             await stakingRewards.rewardsDuration();
             await stakingRewards.lastUpdateTime();
             await stakingRewards.rewardPerTokenStored();
-            await stakingRewards.rewardsDistribution();
             await stakingRewards.userRewardPerTokenPaid(user1.address);
             await stakingRewards.rewards(user1.address);
             await stakingRewards.totalSupply();
@@ -1458,7 +1459,7 @@ describe('StakingRewards', function () {
             await stakingRewards.getLockedStakeAmount(user1.address);
             await stakingRewards.paused();
             await stakingRewards.owner();
-            await stakingRewards.onlyLockStakingPeriodDuration();
+            await stakingRewards.initialLockPeriodDuration();
         });
 
         // Test lockStake when currentLockedStakeAmount == 0 path explicitly
@@ -1525,53 +1526,40 @@ describe('StakingRewards', function () {
             expect(rate2).to.not.equal(rate1);
         });
 
-        it('Should fail to get rewards before only lock staking period finishes', async function () {
+        it('Should fail to get rewards before initial lock period finishes', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
             await expect(stakingRewards.connect(user1).getReward()).to.be.revertedWith(
-                'Get rewards not allowed during only lock staking period',
+                'Get rewards not allowed during initial lock period',
             );
         });
 
-        it('Should fail to withdraw before only lock staking period finishes', async function () {
+        it('Should fail to withdraw before initial lock period finishes', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
             await expect(stakingRewards.connect(user1).withdraw(stakeAmount / 2n)).to.be.revertedWith(
-                'Withdraw not allowed during only lock staking period',
+                'Withdraw not allowed during initial lock period',
             );
         });
 
-        it('Should succeed to get rewards after only lock staking period finishes', async function () {
+        it('Should succeed to get rewards after initial lock period finishes', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
             await time.increase(duration); // Fast forward time to after the lock period
             await expect(stakingRewards.connect(user1).getReward()).to.not.be.reverted;
         });
 
-        it('Should succeed to withdraw after only lock staking period finishes', async function () {
+        it('Should succeed to withdraw after initial lock period finishes', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-            await time.increase(duration); // Fast forward time to after the only lock staking period
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
+            await time.increase(duration); // Fast forward time to after the initial lock period
             await expect(stakingRewards.connect(user1).withdraw(stakeAmount / 2n)).to.not.be.reverted;
         });
 
-        it('Should not allow stakeAndLock with lock period before only lock staking period finishes', async function () {
+        it('Should allow stakeAndLock with lock period after initial lock period finishes', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-
-            const amountToStake = ethers.parseUnits('500', 18);
-            const amountToLock = ethers.parseUnits('300', 18);
-            const lockDuration = 7 * 24 * 60 * 60; // 7 days
-
-            await expect(
-                stakingRewards.connect(user1).stakeAndLock(amountToStake, amountToLock, lockDuration),
-            ).to.be.revertedWith('Lock duration must be greater than the only lock staking period');
-        });
-
-        it('Should allow stakeAndLock with lock period after only lock staking period finishes', async function () {
-            const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-            await time.increase(duration); // Fast forward time to after the only lock staking period
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
+            await time.increase(duration); // Fast forward time to after the initial lock period
 
             const amountToStake = ethers.parseUnits('500', 18);
             const amountToLock = ethers.parseUnits('300', 18);
@@ -1583,25 +1571,12 @@ describe('StakingRewards', function () {
             expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(amountToLock);
         });
 
-        it('Should not allow stakeAndLockOnBehalf with lock period before only lock staking period finishes', async function () {
+        it('Should allow stakeAndLockOnBehalf with lock period after initial lock period finishes', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-            await stakingRewards.connect(owner).setStakerOnBehalf(user1.address);
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
+            await stakingRewards.connect(owner).grantRole(await stakingRewards.STAKER_ON_BEHALF_ROLE(), user1.address);
 
-            const amount = ethers.parseUnits('300', 18);
-            const lockDuration = 7 * 24 * 60 * 60; // 7 days
-
-            await expect(
-                stakingRewards.connect(user1).stakeAndLockOnBehalf(user2, amount, lockDuration),
-            ).to.be.revertedWith('Lock duration must be greater than the only lock staking period');
-        });
-
-        it('Should allow stakeAndLockOnBehalf with lock period after only lock staking period finishes', async function () {
-            const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-            await stakingRewards.connect(owner).setStakerOnBehalf(user1.address);
-
-            await time.increase(duration); // Fast forward time to after the only lock staking period
+            await time.increase(duration); // Fast forward time to after the initial lock period
 
             const amount = ethers.parseUnits('300', 18);
             const lockDuration = 7 * 24 * 60 * 60; // 7 days
@@ -1612,21 +1587,10 @@ describe('StakingRewards', function () {
             expect(await stakingRewards.getLockedStakeAmount(user2.address)).to.equal(amount);
         });
 
-        it('Should not allow lockStake with lock period before only lock staking period finishes', async function () {
+        it('Should allow lockStake with lock period after initial lock period finishes', async function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-
-            const lockDuration = 7 * 24 * 60 * 60; // 7 days
-
-            await expect(stakingRewards.connect(user1).lockStake(stakeAmount, lockDuration)).to.be.revertedWith(
-                'Lock duration must be greater than the only lock staking period',
-            );
-        });
-
-        it('Should allow lockStake with lock period after only lock staking period finishes', async function () {
-            const duration = 90 * 24 * 60 * 60; // 90 days
-            await stakingRewards.connect(owner).setOnlyLockStakingPeriod(duration);
-            await time.increase(duration); // Fast forward time to after the only lock staking period
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
+            await time.increase(duration); // Fast forward time to after the initial lock period
 
             const lockDuration = 7 * 24 * 60 * 60; // 7 days
 

@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
 
 /**
@@ -76,10 +76,13 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
 contract StakingRewards is
     IStakingRewards,
     Ownable2StepUpgradeable,
+    AccessControlUpgradeable,
     ReentrancyGuardUpgradeable,
     PausableUpgradeable
 {
     using SafeERC20 for IERC20;
+    bytes32 public constant STAKER_ON_BEHALF_ROLE = keccak256("STAKER_ON_BEHALF_ROLE");
+    bytes32 public constant REWARDS_DISTRIBUTOR_ROLE = keccak256("REWARDS_DISTRIBUTOR_ROLE");
 
     /* ========== STATE VARIABLES ========== */
 
@@ -90,7 +93,6 @@ contract StakingRewards is
     uint256 public rewardsDuration;
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored;
-    address public rewardsDistribution;
 
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
@@ -102,9 +104,8 @@ contract StakingRewards is
 
     mapping(address => LockedStake) public addressToLockedStake;
 
-    address public stakerOnBehalf;
-    uint256 public onlyLockStakingPeriodStart;
-    uint256 public onlyLockStakingPeriodDuration;
+    uint256 public initialLockPeriodStart;
+    uint256 public initialLockPeriodDuration;
 
     /// @dev Reserved storage gap for future upgrades. Reduces the gap by 1 for each new
     ///      state variable added to this contract in subsequent versions.
@@ -133,18 +134,22 @@ contract StakingRewards is
         uint256 _rewardsDuration
     ) external initializer {
         require(_owner != address(0), "Owner cannot be zero address");
+        require(_rewardsDistribution != address(0), "RewardsDistribution cannot be zero address");
         require(_rewardsToken != address(0), "RewardsToken cannot be zero address");
         require(_stakingToken != address(0), "StakingToken cannot be zero address");
 
         // Initialize inherited OZ contracts
         __Ownable_init(_owner);
+        __AccessControl_init();
         __ReentrancyGuard_init();
         __Pausable_init();
+
+        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
 
         rewardsToken = IERC20(_rewardsToken);
         stakingToken = IERC20(_stakingToken);
 
-        _setRewardsDistribution(_rewardsDistribution);
+        _grantRole(REWARDS_DISTRIBUTOR_ROLE, _rewardsDistribution);
         _setRewardsDuration(_rewardsDuration);
     }
 
@@ -229,11 +234,6 @@ contract StakingRewards is
      * @param amount The amount of tokens to stake
      */
     function stake(uint256 amount) public {
-        require(
-            onlyLockStakingPeriodStart == 0 ||
-                block.timestamp >= onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
-            "Only lock staking allowed during this period"
-        );
         _stake(msg.sender, amount);
     }
 
@@ -243,12 +243,7 @@ contract StakingRewards is
      * @param account The address on whose behalf to stake
      * @param amount The amount of tokens to stake
      */
-    function stakeOnBehalf(address account, uint256 amount) public onlyStakerOnBehalf {
-        require(
-            onlyLockStakingPeriodStart == 0 ||
-                block.timestamp >= onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
-            "Only lock staking allowed during this period"
-        );
+    function stakeOnBehalf(address account, uint256 amount) public onlyRole(STAKER_ON_BEHALF_ROLE) {
         _stake(account, amount);
     }
 
@@ -293,7 +288,7 @@ contract StakingRewards is
         address account,
         uint256 amount,
         uint256 lockDuration
-    ) public onlyStakerOnBehalf {
+    ) public onlyRole(STAKER_ON_BEHALF_ROLE) {
         uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
         if (currentLockedStakeAmount > 0) {
             if (block.timestamp + lockDuration < addressToLockedStake[account].unlockTimestamp) {
@@ -313,9 +308,9 @@ contract StakingRewards is
         require(amount > 0, "Cannot withdraw 0");
 
         require(
-            onlyLockStakingPeriodStart == 0 ||
-                block.timestamp >= onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
-            "Withdraw not allowed during only lock staking period"
+            initialLockPeriodStart == 0 ||
+                block.timestamp >= initialLockPeriodStart + initialLockPeriodDuration,
+            "Withdraw not allowed during initial lock period"
         );
 
         // Check if there are any locked tokens
@@ -338,9 +333,9 @@ contract StakingRewards is
      */
     function getReward() public nonReentrant updateReward(msg.sender) {
         require(
-            onlyLockStakingPeriodStart == 0 ||
-                block.timestamp >= onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
-            "Get rewards not allowed during only lock staking period"
+            initialLockPeriodStart == 0 ||
+                block.timestamp >= initialLockPeriodStart + initialLockPeriodDuration,
+            "Get rewards not allowed during initial lock period"
         );
         uint256 reward = rewards[msg.sender];
         if (reward > 0) {
@@ -367,7 +362,7 @@ contract StakingRewards is
      */
     function notifyRewardAmount(
         uint256 reward
-    ) external onlyRewardsDistribution updateReward(address(0)) {
+    ) external onlyRole(REWARDS_DISTRIBUTOR_ROLE) updateReward(address(0)) {
         if (block.timestamp >= periodFinish) {
             rewardRate = reward / rewardsDuration;
         } else {
@@ -393,27 +388,19 @@ contract StakingRewards is
     }
 
     /**
-     * @notice Sets the rewards distribution address
-     * @param _rewardsDistribution The address authorized to call notifyRewardAmount
+     * @notice Sets the initial period during which withdrawals and get rewards are not allowed
+     * @param duration The duration in seconds for which which withdrawals and get rewards are not allowed
      */
-    function setRewardsDistribution(address _rewardsDistribution) external onlyOwner {
-        _setRewardsDistribution(_rewardsDistribution);
-    }
-
-    /**
-     * @notice Sets the period during which only lock staking is allowed
-     * @param duration The duration in seconds for which only lock staking is allowed
-     */
-    function setOnlyLockStakingPeriod(uint256 duration) external onlyOwner {
-        require(duration > 0, "Only lock staking period must be greater than 0");
+    function setInitialLockPeriod(uint256 duration) external onlyOwner {
+        require(duration > 0, "Initial lock period must be greater than 0");
         require(
-            onlyLockStakingPeriodStart == 0 ||
-                block.timestamp > onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
-            "Previous only lock staking period must be complete before changing the duration for the new period"
+            initialLockPeriodStart == 0 ||
+                block.timestamp > initialLockPeriodStart + initialLockPeriodDuration,
+            "Previous initial lock period must be complete before changing the duration for the new period"
         );
-        onlyLockStakingPeriodStart = block.timestamp;
-        onlyLockStakingPeriodDuration = duration;
-        emit OnlyLockStakingPeriodUpdated(duration);
+        initialLockPeriodStart = block.timestamp;
+        initialLockPeriodDuration = duration;
+        emit InitialLockPeriodUpdated(duration);
     }
 
     /**
@@ -440,14 +427,6 @@ contract StakingRewards is
      */
     function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
         _setRewardsDuration(_rewardsDuration);
-    }
-
-    /**
-     * @notice Sets the address to allowed staker on behalf of others
-     * @param newStakerOnBehalf The address to allow staking on behalf
-     */
-    function setStakerOnBehalf(address newStakerOnBehalf) external onlyOwner {
-        stakerOnBehalf = newStakerOnBehalf;
     }
 
     /**
@@ -502,12 +481,6 @@ contract StakingRewards is
     ) internal whenNotPaused {
         require(lockDuration > 0, "Lock duration must be greater than 0");
         require(amount > 0, "Amount must be greater than 0");
-        require(
-            onlyLockStakingPeriodStart == 0 ||
-                block.timestamp + lockDuration >=
-                onlyLockStakingPeriodStart + onlyLockStakingPeriodDuration,
-            "Lock duration must be greater than the only lock staking period"
-        );
 
         // Check that user has enough unlocked staked balance to lock
         uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
@@ -537,16 +510,6 @@ contract StakingRewards is
     }
 
     /**
-     * @notice Internal function to set the rewards distribution address
-     * @param _rewardsDistribution The address authorized to call notifyRewardAmount
-     */
-    function _setRewardsDistribution(address _rewardsDistribution) internal {
-        require(_rewardsDistribution != address(0), "RewardsDistribution cannot be zero address");
-        rewardsDistribution = _rewardsDistribution;
-        emit RewardsDistributionUpdated(_rewardsDistribution);
-    }
-
-    /**
      * @notice Internal function to set the rewards duration
      * @param _rewardsDuration The duration in seconds for reward distribution
      */
@@ -561,16 +524,6 @@ contract StakingRewards is
     }
 
     /* ========== MODIFIERS ========== */
-
-    modifier onlyRewardsDistribution() {
-        require(msg.sender == rewardsDistribution, "Caller is not RewardsDistribution contract");
-        _;
-    }
-
-    modifier onlyStakerOnBehalf() {
-        require(msg.sender == stakerOnBehalf, "Staking on behalf is not allowed for this address");
-        _;
-    }
 
     modifier updateReward(address account) {
         rewardPerTokenStored = rewardPerToken();
@@ -592,5 +545,5 @@ contract StakingRewards is
     event Recovered(address token, uint256 amount);
     event RewardsDistributionUpdated(address indexed newRewardsDistribution);
     event StakeLocked(address indexed user, uint256 amount, uint256 lockDuration);
-    event OnlyLockStakingPeriodUpdated(uint256 newDuration);
+    event InitialLockPeriodUpdated(uint256 newDuration);
 }

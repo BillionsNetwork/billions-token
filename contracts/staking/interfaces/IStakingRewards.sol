@@ -33,8 +33,6 @@ interface IStakingRewards {
 
     function rewardPerTokenStored() external view returns (uint256);
 
-    function rewardsDistribution() external view returns (address);
-
     function userRewardPerTokenPaid(address account) external view returns (uint256);
 
     function rewards(address account) external view returns (uint256);
@@ -87,17 +85,13 @@ interface IStakingRewards {
 
     function notifyRewardAmount(uint256 reward) external;
 
-    function setRewardsDistribution(address _rewardsDistribution) external;
-
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external;
 
     function setRewardsDuration(uint256 _rewardsDuration) external;
-
-    function setStakerOnBehalf(address staker) external;
 
     function pause() external;
 
     function unpause() external;
 
-    function setOnlyLockStakingPeriod(uint256 duration) external;
+    function setInitialLockPeriod(uint256 duration) external;
 }
