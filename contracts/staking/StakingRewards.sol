@@ -386,7 +386,7 @@ contract StakingRewards is
 
     /**
      * @notice Sets the initial period during which withdrawals and get rewards are not allowed
-     * @param duration The duration in seconds for which which withdrawals and get rewards are not allowed
+     * @param duration The duration in seconds for which withdrawals and get rewards are not allowed
      */
     function setInitialLockPeriod(uint256 duration) external onlyOwner {
         require(duration > 0, "Initial lock period must be greater than 0");
