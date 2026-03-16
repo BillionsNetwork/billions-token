@@ -106,6 +106,10 @@ contract StakingRewards is
     uint256 public onlyLockStakingPeriodStart;
     uint256 public onlyLockStakingPeriodDuration;
 
+    /// @dev Reserved storage gap for future upgrades. Reduces the gap by 1 for each new
+    ///      state variable added to this contract in subsequent versions.
+    uint256[50] private __gap;
+
     /* ========== CONSTRUCTOR ========== */
 
     /// @custom:oz-upgrades-unsafe-allow constructor
