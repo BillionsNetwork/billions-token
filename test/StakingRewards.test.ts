@@ -222,6 +222,15 @@ describe('StakingRewards', function () {
                 .withArgs(user2.address, await stakingRewards.STAKER_ON_BEHALF_ROLE());
         });
 
+        it('Should fail stakeOnBehalf with zero address account', async function () {
+            const amountToStake = ethers.parseUnits('500', 18);
+            await stakingRewards.connect(owner).grantRole(await stakingRewards.STAKER_ON_BEHALF_ROLE(), user2.address);
+
+            await expect(
+                stakingRewards.connect(user2).stakeOnBehalf(ethers.ZeroAddress, amountToStake),
+            ).to.be.revertedWith('Cannot stake for the zero address');
+        });
+
         it('Should allow stakeOnBehalf on behalf of the user', async function () {
             const amountToStake = ethers.parseUnits('500', 18);
             const user2BalanceBefore = await stakingToken.balanceOf(user2.address);

@@ -37,13 +37,11 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  *
  * Contract Consolidation:
  * - Merged RewardsDistributionRecipient logic directly into StakingRewards contract
- * - Added RewardsDistributionUpdated event for better event tracking
  *
  * Admin Functions:
  * - Added pause() and unpause() functions for owner control
  * - Made rewardsDuration configurable via initialize() parameter
- * - Refactored setRewardsDistribution() and setRewardsDuration() to use internal functions
- * - Created _setRewardsDistribution() internal function for code reuse
+ * - Refactored setRewardsDuration() to use internal functions
  * - Created _setRewardsDuration() internal function for code reuse
  * - Both internal functions are called by initialize() and their respective public functions
  * - _setRewardsDuration() includes periodFinish check to prevent changing duration during active reward periods
@@ -66,7 +64,6 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * Security & Input Validation:
  * - Added zero address validation in initialize() for owner, rewardsDistribution, rewardsToken, stakingToken
  * - Added zero value validation for rewardsDuration in initialize() and setRewardsDuration()
- * - Added zero address validation in setRewardsDistribution()
  * - Fixed notifyRewardAmount() balance check when stakingToken == rewardsToken (subtracts _totalSupply)
  * - Added StakeLocked event for lock tracking
  * - Added NatSpec documentation to all functions
@@ -457,6 +454,7 @@ contract StakingRewards is
         address account,
         uint256 amount
     ) internal nonReentrant whenNotPaused updateReward(account) {
+        require(account != address(0), "Cannot stake for the zero address");
         require(amount > 0, "Cannot stake 0");
         _totalSupply = _totalSupply + amount;
         _balances[account] = _balances[account] + amount;
@@ -470,8 +468,8 @@ contract StakingRewards is
      *      the new amount cannot be less than the currently locked amount and the new unlock timestamp
      *      cannot be earlier than the current unlock timestamp. Increasing the lock amount uses additional
      *      unlocked staked balance on top of the already locked tokens.
-     * @param amount The amount of staked tokens to lock
      * @param account The address on whose behalf to lock the tokens
+     * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
     function _lockStake(
@@ -543,7 +541,6 @@ contract StakingRewards is
     event RewardPaid(address indexed user, uint256 reward);
     event RewardsDurationUpdated(uint256 newDuration);
     event Recovered(address token, uint256 amount);
-    event RewardsDistributionUpdated(address indexed newRewardsDistribution);
     event StakeLocked(address indexed user, uint256 amount, uint256 lockDuration);
     event InitialLockPeriodUpdated(uint256 newDuration);
 }
