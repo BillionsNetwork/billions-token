@@ -584,6 +584,7 @@ describe('StakingRewards', function () {
             const duration = 90 * 24 * 60 * 60; // 90 days
             await stakingRewards.connect(owner).setInitialLockPeriod(duration);
             expect(await stakingRewards.initialLockPeriodDuration()).to.equal(duration);
+            expect(await stakingRewards.initialLockPeriodFinish()).to.equal((await time.latest()) + duration);
         });
 
         it('Should fail to set initial lock period before period finishes', async function () {

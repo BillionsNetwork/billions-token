@@ -101,7 +101,7 @@ contract StakingRewards is
 
     mapping(address => LockedStake) public addressToLockedStake;
 
-    uint256 public initialLockPeriodStart;
+    uint256 public initialLockPeriodFinish;
     uint256 public initialLockPeriodDuration;
 
     /// @dev Reserved storage gap for future upgrades. Reduces the gap by 1 for each new
@@ -305,7 +305,7 @@ contract StakingRewards is
         require(amount > 0, "Cannot withdraw 0");
 
         require(
-            block.timestamp >= initialLockPeriodStart + initialLockPeriodDuration,
+            block.timestamp >= initialLockPeriodFinish,
             "Withdraw not allowed during initial lock period"
         );
 
@@ -329,7 +329,7 @@ contract StakingRewards is
      */
     function getReward() public nonReentrant updateReward(msg.sender) {
         require(
-            block.timestamp >= initialLockPeriodStart + initialLockPeriodDuration,
+            block.timestamp >= initialLockPeriodFinish,
             "Get rewards not allowed during initial lock period"
         );
         uint256 reward = rewards[msg.sender];
@@ -389,11 +389,11 @@ contract StakingRewards is
     function setInitialLockPeriod(uint256 duration) external onlyOwner {
         require(duration > 0, "Initial lock period must be greater than 0");
         require(
-            block.timestamp > initialLockPeriodStart + initialLockPeriodDuration,
+            block.timestamp > initialLockPeriodFinish,
             "Previous initial lock period must be complete before changing the duration for the new period"
         );
-        initialLockPeriodStart = block.timestamp;
         initialLockPeriodDuration = duration;
+        initialLockPeriodFinish = block.timestamp + duration;
         emit InitialLockPeriodUpdated(duration);
     }
 
