@@ -305,8 +305,7 @@ contract StakingRewards is
         require(amount > 0, "Cannot withdraw 0");
 
         require(
-            initialLockPeriodStart == 0 ||
-                block.timestamp >= initialLockPeriodStart + initialLockPeriodDuration,
+            block.timestamp >= initialLockPeriodStart + initialLockPeriodDuration,
             "Withdraw not allowed during initial lock period"
         );
 
@@ -330,8 +329,7 @@ contract StakingRewards is
      */
     function getReward() public nonReentrant updateReward(msg.sender) {
         require(
-            initialLockPeriodStart == 0 ||
-                block.timestamp >= initialLockPeriodStart + initialLockPeriodDuration,
+            block.timestamp >= initialLockPeriodStart + initialLockPeriodDuration,
             "Get rewards not allowed during initial lock period"
         );
         uint256 reward = rewards[msg.sender];
@@ -391,8 +389,7 @@ contract StakingRewards is
     function setInitialLockPeriod(uint256 duration) external onlyOwner {
         require(duration > 0, "Initial lock period must be greater than 0");
         require(
-            initialLockPeriodStart == 0 ||
-                block.timestamp > initialLockPeriodStart + initialLockPeriodDuration,
+            block.timestamp > initialLockPeriodStart + initialLockPeriodDuration,
             "Previous initial lock period must be complete before changing the duration for the new period"
         );
         initialLockPeriodStart = block.timestamp;
