@@ -230,7 +230,7 @@ contract StakingRewards is
      * @dev Tokens are staked unlocked by default. Use lockStake() to lock staked tokens.
      * @param amount The amount of tokens to stake
      */
-    function stake(uint256 amount) public {
+    function stake(uint256 amount) public nonReentrant whenNotPaused {
         _stake(msg.sender, amount);
     }
 
@@ -240,7 +240,10 @@ contract StakingRewards is
      * @param account The address on whose behalf to stake
      * @param amount The amount of tokens to stake
      */
-    function stakeOnBehalf(address account, uint256 amount) public onlyRole(STAKER_ON_BEHALF_ROLE) {
+    function stakeOnBehalf(
+        address account,
+        uint256 amount
+    ) public nonReentrant whenNotPaused onlyRole(STAKER_ON_BEHALF_ROLE) {
         _stake(account, amount);
     }
 
@@ -253,7 +256,7 @@ contract StakingRewards is
      * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
-    function lockStake(uint256 amount, uint256 lockDuration) public {
+    function lockStake(uint256 amount, uint256 lockDuration) public whenNotPaused {
         _lockStake(msg.sender, amount, lockDuration);
     }
 
@@ -268,24 +271,24 @@ contract StakingRewards is
         uint256 amountToStake,
         uint256 amountToLock,
         uint256 lockDuration
-    ) public {
+    ) public nonReentrant whenNotPaused {
         _stake(msg.sender, amountToStake);
         _lockStake(msg.sender, amountToLock, lockDuration);
     }
 
     /**
-     * @notice Stakes and locks tokens on behalf of an account for a specified duration
+     * @notice Stakes and accumulate locks tokens on behalf of an account for a specified duration
      * @dev Can only be called by the authorized stakerOnBehalf address. If the account already has a locked stake,
      *      the new lock duration will be the maximum of the existing unlock timestamp and the new lock duration.
      * @param account The address on whose behalf to stake and lock
-     * @param amount The amount of tokens to stake and lock
-     * @param lockDuration The duration in seconds to lock the tokens
+     * @param amount The amount of tokens to stake and accumulate to lock
+     * @param lockDuration The duration in seconds to lock all the tokens
      */
     function stakeAndLockOnBehalf(
         address account,
         uint256 amount,
         uint256 lockDuration
-    ) public onlyRole(STAKER_ON_BEHALF_ROLE) {
+    ) public nonReentrant whenNotPaused onlyRole(STAKER_ON_BEHALF_ROLE) {
         uint256 currentLockedStakeAmount = getLockedStakeAmount(account);
         if (currentLockedStakeAmount > 0) {
             if (block.timestamp + lockDuration < addressToLockedStake[account].unlockTimestamp) {
@@ -389,7 +392,7 @@ contract StakingRewards is
     function setInitialLockPeriod(uint256 duration) external onlyOwner {
         require(duration > 0, "Initial lock period must be greater than 0");
         require(
-            block.timestamp > initialLockPeriodFinish,
+            block.timestamp >= initialLockPeriodFinish,
             "Previous initial lock period must be complete before changing the duration for the new period"
         );
         initialLockPeriodDuration = duration;
@@ -447,10 +450,7 @@ contract StakingRewards is
      * @param account The address on whose behalf to stake
      * @param amount The amount of tokens to stake
      */
-    function _stake(
-        address account,
-        uint256 amount
-    ) internal nonReentrant whenNotPaused updateReward(account) {
+    function _stake(address account, uint256 amount) internal updateReward(account) {
         require(account != address(0), "Cannot stake for the zero address");
         require(amount > 0, "Cannot stake 0");
         _totalSupply = _totalSupply + amount;
@@ -469,11 +469,7 @@ contract StakingRewards is
      * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
-    function _lockStake(
-        address account,
-        uint256 amount,
-        uint256 lockDuration
-    ) internal whenNotPaused {
+    function _lockStake(address account, uint256 amount, uint256 lockDuration) internal {
         require(lockDuration > 0, "Lock duration must be greater than 0");
         require(amount > 0, "Amount must be greater than 0");
 
@@ -516,6 +512,19 @@ contract StakingRewards is
         );
         rewardsDuration = _rewardsDuration;
         emit RewardsDurationUpdated(_rewardsDuration);
+    }
+
+    function _transferOwnership(address newOwner) internal override {
+        address oldOwner = owner();
+        super._transferOwnership(newOwner);
+        // Ensure the new owner has the necessary roles
+        if (newOwner != address(0) && !hasRole(DEFAULT_ADMIN_ROLE, newOwner)) {
+            _grantRole(DEFAULT_ADMIN_ROLE, newOwner);
+        }
+        if (newOwner != address(0) && oldOwner != newOwner) {
+            // Revoke roles from the old owner
+            _revokeRole(DEFAULT_ADMIN_ROLE, oldOwner);
+        }
     }
 
     /* ========== MODIFIERS ========== */

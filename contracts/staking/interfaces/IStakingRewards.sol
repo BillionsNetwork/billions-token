@@ -71,11 +71,7 @@ interface IStakingRewards {
         uint256 lockDuration
     ) external;
 
-    function stakeAndLockOnBehalf(
-        address account,
-        uint256 amountToStake,
-        uint256 lockDuration
-    ) external;
+    function stakeAndLockOnBehalf(address account, uint256 amount, uint256 lockDuration) external;
 
     function getReward() external;
 
