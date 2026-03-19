@@ -3,10 +3,10 @@ pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+// solhint-disable-next-line max-line-length
+import {AccessControlDefaultAdminRulesUpgradeable} from "@openzeppelin/contracts-upgradeable/access/extensions/AccessControlDefaultAdminRulesUpgradeable.sol";
 import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
 
 /**
@@ -39,7 +39,7 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Merged RewardsDistributionRecipient logic directly into StakingRewards contract
  *
  * Admin Functions:
- * - Added pause() and unpause() functions for owner control
+ * - Added pause() and unpause() functions for onlyRole(DEFAULT_ADMIN_ROLE) control
  * - Made rewardsDuration configurable via initialize() parameter
  * - Refactored setRewardsDuration() to use internal functions
  * - Created _setRewardsDuration() internal function for code reuse
@@ -62,7 +62,8 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added LockedStake struct to interface for external accessibility
  *
  * Security & Input Validation:
- * - Added zero address validation in initialize() for owner, rewardsDistribution, rewardsToken, stakingToken
+ * - Added zero address validation in initialize() for onlyRole(DEFAULT_ADMIN_ROLE), 
+ *   rewardsDistribution, rewardsToken, stakingToken
  * - Added zero value validation for rewardsDuration in initialize() and setRewardsDuration()
  * - Fixed notifyRewardAmount() balance check when stakingToken == rewardsToken (subtracts _totalSupply)
  * - Added StakeLocked event for lock tracking
@@ -72,14 +73,14 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  */
 contract StakingRewards is
     IStakingRewards,
-    Ownable2StepUpgradeable,
-    AccessControlUpgradeable,
+    AccessControlDefaultAdminRulesUpgradeable,
     ReentrancyGuardUpgradeable,
     PausableUpgradeable
 {
     using SafeERC20 for IERC20;
     bytes32 public constant STAKER_ON_BEHALF_ROLE = keccak256("STAKER_ON_BEHALF_ROLE");
     bytes32 public constant REWARDS_DISTRIBUTOR_ROLE = keccak256("REWARDS_DISTRIBUTOR_ROLE");
+    uint256 public constant MAX_INITIAL_LOCK_PERIOD_DURATION = 730 days;
 
     /* ========== STATE VARIABLES ========== */
 
@@ -136,12 +137,9 @@ contract StakingRewards is
         require(_stakingToken != address(0), "StakingToken cannot be zero address");
 
         // Initialize inherited OZ contracts
-        __Ownable_init(_owner);
-        __AccessControl_init();
+        __AccessControlDefaultAdminRules_init(0, _owner);
         __ReentrancyGuard_init();
         __Pausable_init();
-
-        _grantRole(DEFAULT_ADMIN_ROLE, _owner);
 
         rewardsToken = IERC20(_rewardsToken);
         stakingToken = IERC20(_stakingToken);
@@ -347,7 +345,9 @@ contract StakingRewards is
      * @notice Withdraws all unlocked staked tokens and claims rewards
      */
     function exit() external {
-        withdraw(_balances[msg.sender] - getLockedStakeAmount(msg.sender));
+        if (_balances[msg.sender] - getLockedStakeAmount(msg.sender) > 0) {
+            withdraw(_balances[msg.sender] - getLockedStakeAmount(msg.sender));
+        }
         getReward();
     }
 
@@ -389,8 +389,12 @@ contract StakingRewards is
      * @notice Sets the initial period during which withdrawals and get rewards are not allowed
      * @param duration The duration in seconds for which withdrawals and get rewards are not allowed
      */
-    function setInitialLockPeriod(uint256 duration) external onlyOwner {
+    function setInitialLockPeriod(uint256 duration) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(duration > 0, "Initial lock period must be greater than 0");
+        require(
+            duration <= MAX_INITIAL_LOCK_PERIOD_DURATION,
+            "Initial lock period cannot be longer than 2 years"
+        );
         require(
             block.timestamp >= initialLockPeriodFinish,
             "Previous initial lock period must be complete before changing the duration for the new period"
@@ -407,7 +411,10 @@ contract StakingRewards is
      * @param tokenAddress The address of the token to recover
      * @param tokenAmount The amount of tokens to recover
      */
-    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
+    function recoverERC20(
+        address tokenAddress,
+        uint256 tokenAmount
+    ) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(tokenAmount > 0, "Cannot recover 0 tokens");
         if (tokenAddress == address(stakingToken)) {
             // Protect user staked tokens
@@ -422,23 +429,23 @@ contract StakingRewards is
      * @notice Sets the rewards duration for future reward periods
      * @param _rewardsDuration The duration in seconds for reward distribution
      */
-    function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
+    function setRewardsDuration(uint256 _rewardsDuration) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _setRewardsDuration(_rewardsDuration);
     }
 
     /**
      * @notice Pauses staking functionality
-     * @dev Only owner can pause. Withdrawals and reward claims remain available
+     * @dev Only admin can pause. Withdrawals and reward claims remain available
      */
-    function pause() external onlyOwner {
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _pause();
     }
 
     /**
      * @notice Unpauses staking functionality
-     * @dev Only owner can unpause
+     * @dev Only admin can unpause
      */
-    function unpause() external onlyOwner {
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
 
@@ -512,19 +519,6 @@ contract StakingRewards is
         );
         rewardsDuration = _rewardsDuration;
         emit RewardsDurationUpdated(_rewardsDuration);
-    }
-
-    function _transferOwnership(address newOwner) internal override {
-        address oldOwner = owner();
-        super._transferOwnership(newOwner);
-        // Ensure the new owner has the necessary roles
-        if (newOwner != address(0) && !hasRole(DEFAULT_ADMIN_ROLE, newOwner)) {
-            _grantRole(DEFAULT_ADMIN_ROLE, newOwner);
-        }
-        if (oldOwner != newOwner) {
-            // Revoke roles from the old owner
-            _revokeRole(DEFAULT_ADMIN_ROLE, oldOwner);
-        }
     }
 
     /* ========== MODIFIERS ========== */

@@ -493,7 +493,7 @@ describe('StakingRewards', function () {
             expect(await rewardsToken.balanceOf(user1.address)).to.be.closeTo(earnedBefore, earnedBefore / 1000n);
         });
 
-        it('Should fail exit if tokens are locked', async function () {
+        it('Should allow exit if tokens are locked (skips withdraw if all tokens are locked)', async function () {
             const lockDuration = 30 * 24 * 60 * 60;
             await stakingRewards.connect(user1).lockStake(stakeAmount, lockDuration);
 
@@ -502,7 +502,7 @@ describe('StakingRewards', function () {
             // Verify tokens are locked
             expect(await stakingRewards.getLockedStakeAmount(user1.address)).to.equal(stakeAmount);
 
-            await expect(stakingRewards.connect(user1).exit()).to.be.reverted;
+            await expect(stakingRewards.connect(user1).exit()).not.to.be.reverted;
         });
 
         it('Should allow exit after lock expires', async function () {
@@ -585,6 +585,28 @@ describe('StakingRewards', function () {
             await stakingRewards.connect(owner).setInitialLockPeriod(duration);
             expect(await stakingRewards.initialLockPeriodDuration()).to.equal(duration);
             expect(await stakingRewards.initialLockPeriodFinish()).to.equal((await time.latest()) + duration);
+        });
+
+        it('Should fail to set initial lock period 0', async function () {
+            await expect(stakingRewards.connect(owner).setInitialLockPeriod(0)).to.be.revertedWith(
+                'Initial lock period must be greater than 0',
+            );
+        });
+
+        it('Should fail to set initial lock period longer than 2 years', async function () {
+            await expect(stakingRewards.connect(owner).setInitialLockPeriod(731 * 24 * 60 * 60)).to.be.revertedWith(
+                'Initial lock period cannot be longer than 2 years',
+            );
+        });
+
+        it('Should fail to set initial lock period before period finishes', async function () {
+            const duration = 90 * 24 * 60 * 60; // 90 days
+            await stakingRewards.connect(owner).setInitialLockPeriod(duration);
+            expect(await stakingRewards.initialLockPeriodDuration()).to.equal(duration);
+
+            await expect(stakingRewards.connect(owner).setInitialLockPeriod(duration)).to.be.revertedWith(
+                'Previous initial lock period must be complete before changing the duration for the new period',
+            );
         });
 
         it('Should fail to set initial lock period before period finishes', async function () {
