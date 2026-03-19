@@ -62,7 +62,7 @@ import {IStakingRewards} from "./interfaces/IStakingRewards.sol";
  * - Added LockedStake struct to interface for external accessibility
  *
  * Security & Input Validation:
- * - Added zero address validation in initialize() for onlyRole(DEFAULT_ADMIN_ROLE), 
+ * - Added zero address validation in initialize() for onlyRole(DEFAULT_ADMIN_ROLE),
  *   rewardsDistribution, rewardsToken, stakingToken
  * - Added zero value validation for rewardsDuration in initialize() and setRewardsDuration()
  * - Fixed notifyRewardAmount() balance check when stakingToken == rewardsToken (subtracts _totalSupply)
@@ -81,6 +81,7 @@ contract StakingRewards is
     bytes32 public constant STAKER_ON_BEHALF_ROLE = keccak256("STAKER_ON_BEHALF_ROLE");
     bytes32 public constant REWARDS_DISTRIBUTOR_ROLE = keccak256("REWARDS_DISTRIBUTOR_ROLE");
     uint256 public constant MAX_INITIAL_LOCK_PERIOD_DURATION = 730 days;
+    uint48 public constant DEFAULT_INITIAL_DELAY = 2 days;
 
     /* ========== STATE VARIABLES ========== */
 
@@ -137,7 +138,7 @@ contract StakingRewards is
         require(_stakingToken != address(0), "StakingToken cannot be zero address");
 
         // Initialize inherited OZ contracts
-        __AccessControlDefaultAdminRules_init(0, _owner);
+        __AccessControlDefaultAdminRules_init(DEFAULT_INITIAL_DELAY, _owner);
         __ReentrancyGuard_init();
         __Pausable_init();
 
@@ -345,8 +346,9 @@ contract StakingRewards is
      * @notice Withdraws all unlocked staked tokens and claims rewards
      */
     function exit() external {
-        if (_balances[msg.sender] - getLockedStakeAmount(msg.sender) > 0) {
-            withdraw(_balances[msg.sender] - getLockedStakeAmount(msg.sender));
+        uint256 withdrawAmount = _balances[msg.sender] - getLockedStakeAmount(msg.sender);
+        if (withdrawAmount > 0) {
+            withdraw(withdrawAmount);
         }
         getReward();
     }

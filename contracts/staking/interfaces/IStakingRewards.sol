@@ -35,6 +35,10 @@ interface IStakingRewards {
 
     function userRewardPerTokenPaid(address account) external view returns (uint256);
 
+    function initialLockPeriodFinish() external view returns (uint256);
+
+    function initialLockPeriodDuration() external view returns (uint256);
+
     function rewards(address account) external view returns (uint256);
 
     function totalSupply() external view returns (uint256);
