@@ -256,7 +256,7 @@ contract StakingRewards is
      * @param amount The amount of staked tokens to lock
      * @param lockDuration The duration in seconds to lock the tokens
      */
-    function lockStake(uint256 amount, uint256 lockDuration) public whenNotPaused {
+    function lockStake(uint256 amount, uint256 lockDuration) public nonReentrant whenNotPaused {
         _lockStake(msg.sender, amount, lockDuration);
     }
 
@@ -521,7 +521,7 @@ contract StakingRewards is
         if (newOwner != address(0) && !hasRole(DEFAULT_ADMIN_ROLE, newOwner)) {
             _grantRole(DEFAULT_ADMIN_ROLE, newOwner);
         }
-        if (newOwner != address(0) && oldOwner != newOwner) {
+        if (oldOwner != newOwner) {
             // Revoke roles from the old owner
             _revokeRole(DEFAULT_ADMIN_ROLE, oldOwner);
         }
@@ -538,15 +538,4 @@ contract StakingRewards is
         }
         _;
     }
-
-    /* ========== EVENTS ========== */
-
-    event RewardAdded(uint256 reward);
-    event Staked(address indexed user, uint256 amount);
-    event Withdrawn(address indexed user, uint256 amount);
-    event RewardPaid(address indexed user, uint256 reward);
-    event RewardsDurationUpdated(uint256 newDuration);
-    event Recovered(address token, uint256 amount);
-    event StakeLocked(address indexed user, uint256 amount, uint256 lockDuration);
-    event InitialLockPeriodUpdated(uint256 newDuration);
 }
