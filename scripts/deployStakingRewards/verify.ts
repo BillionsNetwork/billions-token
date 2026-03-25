@@ -123,10 +123,9 @@ async function main() {
 
     // 2.3 Check rewards distribution
     console.log('\n📤 Rewards Distribution Check:');
-    const rewardsDistribution = await stakingRewards.rewardsDistribution();
-    console.log(`   Rewards Distribution: ${rewardsDistribution}`);
-
-    expect(rewardsDistribution.toLowerCase()).to.equal(input.REWARDS_DISTRIBUTOR.toLowerCase(), 'Rewards distribution mismatch');
+    expect(
+        await stakingRewards.hasRole(await stakingRewards.REWARDS_DISTRIBUTOR_ROLE(), input.REWARDS_DISTRIBUTOR),
+    ).to.equal(true);
     console.log('   ✅ Rewards distribution is Multisig');
 
     // 2.4 Check rewards duration

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity 0.8.30;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -33,9 +33,11 @@ interface IStakingRewards {
 
     function rewardPerTokenStored() external view returns (uint256);
 
-    function rewardsDistribution() external view returns (address);
-
     function userRewardPerTokenPaid(address account) external view returns (uint256);
+
+    function initialLockPeriodFinish() external view returns (uint256);
+
+    function initialLockPeriodDuration() external view returns (uint256);
 
     function rewards(address account) external view returns (uint256);
 
@@ -61,6 +63,8 @@ interface IStakingRewards {
 
     function stake(uint256 amount) external;
 
+    function stakeOnBehalf(address account, uint256 amount) external;
+
     function withdraw(uint256 amount) external;
 
     function lockStake(uint256 amount, uint256 lockDuration) external;
@@ -71,6 +75,8 @@ interface IStakingRewards {
         uint256 lockDuration
     ) external;
 
+    function stakeAndLockOnBehalf(address account, uint256 amount, uint256 lockDuration) external;
+
     function getReward() external;
 
     function exit() external;
@@ -79,8 +85,6 @@ interface IStakingRewards {
 
     function notifyRewardAmount(uint256 reward) external;
 
-    function setRewardsDistribution(address _rewardsDistribution) external;
-
     function recoverERC20(address tokenAddress, uint256 tokenAmount) external;
 
     function setRewardsDuration(uint256 _rewardsDuration) external;
@@ -88,4 +92,17 @@ interface IStakingRewards {
     function pause() external;
 
     function unpause() external;
+
+    function setInitialLockPeriod(uint256 duration) external;
+
+    /* ========== EVENTS ========== */
+
+    event RewardAdded(uint256 reward);
+    event Staked(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount);
+    event RewardPaid(address indexed user, uint256 reward);
+    event RewardsDurationUpdated(uint256 newDuration);
+    event Recovered(address token, uint256 amount);
+    event StakeLocked(address indexed user, uint256 amount, uint256 lockDuration);
+    event InitialLockPeriodUpdated(uint256 newDuration);
 }
