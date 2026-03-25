@@ -26,20 +26,21 @@
         "node": ">=18.0.0"
     },
     "dependencies": {
+        "@nomicfoundation/hardhat-ledger": "1.0.3",
         "@nomicfoundation/hardhat-toolbox": "^5.0.0",
         "@openzeppelin/contracts-upgradeable": "^5.4.0",
-        "@nomicfoundation/hardhat-ledger": "1.0.3",
         "@openzeppelin/hardhat-upgrades": "^3.9.1",
-        "patch-package": "^8.0.0",
         "@types/node": "^22.10.2",
         "dotenv": "^16.4.7",
         "hardhat": "^2.22.18",
+        "patch-package": "^8.0.0",
         "prettier": "^3.7.4",
         "prettier-plugin-solidity": "^1.1.1",
+        "solhint": "^6.0.2",
+        "solhint-plugin-prettier": "^0.1.0",
         "ts-node": "^10.9.2",
         "typescript": "^5.7.2",
-        "solhint": "^6.0.2",
-        "solhint-plugin-prettier": "^0.1.0"
+        "winston": "^3.19.0"
     },
     "overrides": {
         "diff": "^8.0.3",
