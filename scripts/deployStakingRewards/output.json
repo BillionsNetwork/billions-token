@@ -2,12 +2,12 @@
   "network": "billions-mainnet",
   "chainId": 45056,
   "deployer": "0xAe15d2023A76174a940cbb2b7F44012C728B9d74",
-  "timestamp": "2026-02-24T11:47:54.145Z",
+  "timestamp": "2026-03-25T09:55:52.331Z",
   "addresses": {
-    "timelock": "0x5449aaAeFBf84308CF47014fDcD01Fa6C7c14438",
-    "proxy": "0xddF68B9b379617528b37437Ab201ED9AF60A0E1C",
-    "implementation": "0x79703a373e2349CE6aCeeecB95c0dB13D2F54e3A",
-    "proxyAdmin": "0xEc76886A629929e0AF02AfD43C3548C7790f6794"
+    "timelock": "0x50e320591bcBd5AF8618019b502bEe1c67dcAfE1",
+    "proxy": "0x9B814D49280f74d4135B0412e292846eCF3A200C",
+    "implementation": "0xfFE5FBca056e58511031483F8652277ce71f9677",
+    "proxyAdmin": "0x5854F7821675A31FE2C4f6eDfb71eb5D6900F1cd"
   },
   "config": {
     "multisig": "0x242daE44F5d8fb54B198D03a94dA45B5a4413e21",
