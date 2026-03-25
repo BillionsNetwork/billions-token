@@ -184,7 +184,7 @@ All upgrades go through the Timelock (2-day minimum delay):
 ### StakingRewards
 |     Network      |     Address                                |
 |:-----------------------:|:------------------------------------------:|
-|    **Billions Mainnet**    | [0xddF68B9b379617528b37437Ab201ED9AF60A0E1C](https://explorer.billions.network/address/0xddF68B9b379617528b37437Ab201ED9AF60A0E1C) |
+|    **Billions Mainnet**    | [0x58201A4826Dc07443d1280bA194604B12A3b8FaB](https://explorer.billions.network/address/0x58201A4826Dc07443d1280bA194604B12A3b8FaB) |
 
 
 ## Security Audits
