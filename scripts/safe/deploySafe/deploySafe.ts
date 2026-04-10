@@ -42,12 +42,8 @@
  * these aren't available, you'll need to update the addresses below.
  */
 import { ethers, config } from 'hardhat';
-import { HttpNetworkConfig } from 'hardhat/types';
 
 // ============== CONFIGURATION ==============
-// Networks from hardhat.config.ts (add or remove networks as needed)
-const NETWORKS = ['billions-testnet'];
-
 // Safe Proxy Factory (same address on all networks)
 const PROXY_FACTORY_ADDRESS = '0xa6B71E26C5e0845f74c812102Ca7114b6a896AB2';
 
@@ -76,8 +72,7 @@ const SAFE_ABI = [
     'function setup(address[] calldata _owners, uint256 _threshold, address to, bytes calldata data, address fallbackHandler, address paymentToken, uint256 payment, address payable paymentReceiver) external',
 ];
 
-async function deploySafe(networkName: string, signer: any): Promise<string> {
-    console.log(`\n--- Deploying Safe on ${networkName} ---`);
+async function deploySafe(signer: any): Promise<string> {
     console.log(`Deployer: ${await signer.getAddress()}`);
 
     // Create contract instances
@@ -129,30 +124,9 @@ async function deploySafe(networkName: string, signer: any): Promise<string> {
     return safeAddress;
 }
 
-function getWalletForNetwork(networkConfig: HttpNetworkConfig, provider: any) {
-    // Try private key from env first
-    if (process.env.PRIVATE_KEY) {
-        return new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-    }
-
-    // Try mnemonic from network config or env
-    const accounts = networkConfig.accounts as any;
-    const mnemonic = accounts?.mnemonic || process.env.MNEMONIC;
-    if (mnemonic) {
-        return ethers.Wallet.fromPhrase(mnemonic).connect(provider);
-    }
-
-    // Try array of private keys
-    if (Array.isArray(accounts) && accounts.length > 0) {
-        return new ethers.Wallet(accounts[0], provider);
-    }
-
-    throw new Error('No private key or mnemonic found. Set PRIVATE_KEY or MNEMONIC env var.');
-}
-
 async function main() {
     console.log('='.repeat(60));
-    console.log('Deploy Safe on Multiple Networks');
+    console.log('Deploy Safe');
     console.log('='.repeat(60));
 
     // Validate configuration
@@ -163,48 +137,16 @@ async function main() {
         throw new Error(`Threshold must be between 1 and ${OWNERS.length}`);
     }
 
-    // Validate networks
-    if (NETWORKS.length === 0) {
-        throw new Error('Please configure at least one network in NETWORKS array');
-    }
-
     // Deploy on each network
-    const deployedAddresses: { network: string; address: string }[] = [];
-
-    for (let i = 0; i < NETWORKS.length; i++) {
-        const networkName = NETWORKS[i];
-        const networkConfig = config.networks[networkName] as HttpNetworkConfig;
-
-        if (!networkConfig?.url) {
-            throw new Error(`Network "${networkName}" not found in hardhat.config.ts or has no URL`);
-        }
-
-        const provider = new ethers.JsonRpcProvider(networkConfig.url);
-        const wallet = getWalletForNetwork(networkConfig, provider);
-
-        if (i > 0) {
-            console.log(`\n${'='.repeat(60)}`);
-        }
-
-        const safeAddress = await deploySafe(networkName, wallet);
-        deployedAddresses.push({ network: networkName, address: safeAddress });
-    }
+    const [deployer] = await ethers.getSigners();
+    const safeAddress = await deploySafe(deployer);
 
     // Summary
     console.log(`\n${'='.repeat(60)}`);
     console.log('DEPLOYMENT SUMMARY');
     console.log('='.repeat(60));
 
-    for (const { network, address } of deployedAddresses) {
-        console.log(`${network}: ${address}`);
-    }
-
-    // Check if all addresses match (only if more than one network)
-    if (deployedAddresses.length > 1) {
-        const firstAddress = deployedAddresses[0].address.toLowerCase();
-        const allMatch = deployedAddresses.every((d) => d.address.toLowerCase() === firstAddress);
-        console.log(`Addresses match: ${allMatch ? '✓ YES' : '✗ NO'}`);
-    }
+    console.log(`Deployed Safe at: ${safeAddress}`);
 }
 
 main().catch((error) => {
