@@ -176,15 +176,23 @@ All upgrades go through the Timelock (2-day minimum delay):
 
 ### Token (BILL)
 
-|     Network      |     Address                                |
-|:-----------------------:|:------------------------------------------:|
-|       **Ethereum**        | [0xb1110919016846972056ab995054d65560d5f05e](https://etherscan.io/address/0xb1110919016846972056ab995054d65560d5f05e) |
-|    **Billions Mainnet**    | [0xb060E40C3B053C33D458f7105F95DA52741CAb62](https://explorer.billions.network/address/0xb060E40C3B053C33D458f7105F95DA52741CAb62) |
+
+|     Network      |     Address                                | Bridge |
+|:-----------------------:|:------------------------------------------:|:------:|
+|       **Ethereum**        | [0xb1110919016846972056ab995054d65560d5f05e](https://etherscan.io/address/0xb1110919016846972056ab995054d65560d5f05e) | — |
+|    **Billions Network**    | [0xb060E40C3B053C33D458f7105F95DA52741CAb62](https://explorer.billions.network/address/0xb060E40C3B053C33D458f7105F95DA52741CAb62) | AggLayer |
+|    **BNB Smart Chain**    | [0xDf24f8c21Cb404B3031a450D8e049D6E39FC1fA5](https://bscscan.com/address/0xDf24f8c21Cb404B3031a450D8e049D6E39FC1fA5) | LayerZero |
+|    **Base**    | [0x42Bdfa05945dB355D59fE0B65124e3636F7fEdB5](https://basescan.org/address/0x42Bdfa05945dB355D59fE0B65124e3636F7fEdB5) | LayerZero |
+|    **Polygon**    | [0x0a1ac7A9CD9Af4fCd7321A8a090De580a1C037D6](https://polygonscan.com/address/0x0a1ac7A9CD9Af4fCd7321A8a090De580a1C037D6) | LayerZero |
+|    **Arbitrum**    | [0x55b9f84605B30Df9Bb9d817A6900219F25218157](https://arbiscan.io/address/0x55b9f84605B30Df9Bb9d817A6900219F25218157) | LayerZero |
+|    **Optimism**    | [0x55b9f84605B30Df9Bb9d817A6900219F25218157](https://optimistic.etherscan.io/address/0x55b9f84605B30Df9Bb9d817A6900219F25218157) | LayerZero |
+|    **Mantle**    | [0x55b9f84605B30Df9Bb9d817A6900219F25218157](https://mantlescan.xyz/address/0x55b9f84605B30Df9Bb9d817A6900219F25218157) | LayerZero |
+
 
 ### StakingRewards
 |     Network      |     Address                                |
 |:-----------------------:|:------------------------------------------:|
-|    **Billions Mainnet**    | [0x58201A4826Dc07443d1280bA194604B12A3b8FaB](https://explorer.billions.network/address/0x58201A4826Dc07443d1280bA194604B12A3b8FaB) |
+|    **Billions Network**    | [0x58201A4826Dc07443d1280bA194604B12A3b8FaB](https://explorer.billions.network/address/0x58201A4826Dc07443d1280bA194604B12A3b8FaB) |
 
 
 ## Security Audits
