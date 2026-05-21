@@ -54,12 +54,17 @@ const SAFE_SINGLETON_ADDRESS = '0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552';
 const FALLBACK_HANDLER_ADDRESS = '0xf48f2B2d2a534e402487b3ee7C18c33Aec0Fe5e4';
 
 // Safe configuration
-const OWNERS = [''];
+const OWNERS = [
+    '0x4697a6315371eB737Fb5dbf254ff6A56D79B0e2b',
+    '0x62d686E1648DED493926C21ACd4042dc2d5a4487',
+    '0xAe15d2023A76174a940cbb2b7F44012C728B9d74',
+    '0x2084d9f77828cDE61b0f4e8B97576116cB9265Be'
+];
 
 const THRESHOLD = 2; // Number of signatures required
 
 // Salt nonce for deterministic address (same salt = same address on both networks)
-const SALT_NONCE = 0;
+const SALT_NONCE = 1;
 // ============================================
 
 // ABI for the contracts
