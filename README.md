@@ -179,12 +179,12 @@ All upgrades go through the Timelock (2-day minimum delay):
 |     Network      |     Address                                |
 |:-----------------------:|:------------------------------------------:|
 |       **Ethereum**        | [0xb1110919016846972056ab995054d65560d5f05e](https://etherscan.io/address/0xb1110919016846972056ab995054d65560d5f05e) |
-|    **Billions Mainnet**    | [0xb060E40C3B053C33D458f7105F95DA52741CAb62](https://explorer.billions.network/address/0xb060E40C3B053C33D458f7105F95DA52741CAb62) |
+|    **Billions Network**    | [0xb060E40C3B053C33D458f7105F95DA52741CAb62](https://explorer.billions.network/address/0xb060E40C3B053C33D458f7105F95DA52741CAb62) |
 
 ### StakingRewards
 |     Network      |     Address                                |
 |:-----------------------:|:------------------------------------------:|
-|    **Billions Mainnet**    | [0x58201A4826Dc07443d1280bA194604B12A3b8FaB](https://explorer.billions.network/address/0x58201A4826Dc07443d1280bA194604B12A3b8FaB) |
+|    **Billions Network**    | [0x58201A4826Dc07443d1280bA194604B12A3b8FaB](https://explorer.billions.network/address/0x58201A4826Dc07443d1280bA194604B12A3b8FaB) |
 
 
 ## Security Audits
